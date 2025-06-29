@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface DeleteFeatureParams {
   id: string;
@@ -27,6 +28,11 @@ export class DeleteFeatureTool extends BaseTool<DeleteFeatureParams> {
             description: 'If true, permanently delete. If false, archive.',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.FEATURES_DELETE],
+        minimumAccessLevel: AccessLevel.DELETE,
+        description: 'Requires delete access to features',
       },
       apiClient,
       logger

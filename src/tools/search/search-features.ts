@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface SearchFeaturesParams {
   query: string;
@@ -105,6 +106,11 @@ export class SearchFeaturesTool extends BaseTool<SearchFeaturesParams> {
             description: 'Number of results to skip',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.SEARCH],
+        minimumAccessLevel: AccessLevel.READ,
+        description: 'Requires search access',
       },
       apiClient,
       logger

@@ -1,6 +1,7 @@
 import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '@api/index.js';
 import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface ListUsersParams {
   role?: 'admin' | 'contributor' | 'viewer';
@@ -30,6 +31,11 @@ export class ListUsersTool extends BaseTool<ListUsersParams> {
             description: 'Search in user names and emails',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.USERS_READ],
+        minimumAccessLevel: AccessLevel.READ,
+        description: 'Requires read access to users',
       },
       apiClient,
       logger

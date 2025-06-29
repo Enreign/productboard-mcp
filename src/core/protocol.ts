@@ -10,6 +10,15 @@ import { Validator } from '@middleware/validator.js';
 import { ProtocolError, ToolExecutionError } from '@utils/errors.js';
 import { Logger } from '@utils/logger.js';
 
+// MCP/JSON-RPC 2.0 Standard Error Codes
+const MCP_ERROR_CODES = {
+  PARSE_ERROR: -32700,      // Invalid JSON was received by the server
+  INVALID_REQUEST: -32600,  // The JSON sent is not a valid Request object
+  METHOD_NOT_FOUND: -32601, // The method does not exist / is not available
+  INVALID_PARAMS: -32602,   // Invalid method parameter(s)
+  INTERNAL_ERROR: -32603,   // Internal JSON-RPC error
+} as const;
+
 export class MCPProtocolHandler implements ProtocolHandler {
   private toolRegistry: ToolRegistry;
   private validator: Validator;
@@ -53,13 +62,19 @@ export class MCPProtocolHandler implements ProtocolHandler {
       errors.push('Request method is required');
     } else if (request.method.startsWith('pb_')) {
       if (!this.toolRegistry.hasTool(request.method)) {
-        errors.push(`Unknown tool: ${request.method}`);
+        errors.push(`Tool not found: ${request.method}`);
       } else if (request.params) {
         const schema = this.toolRegistry.getToolSchema(request.method);
         const validationResult = this.validator.validateSchema(request.params, schema);
         if (!validationResult.valid) {
           errors.push(...validationResult.errors.map(e => e.message));
         }
+      }
+    } else {
+      // Handle standard MCP methods
+      const supportedMethods = this.getSupportedMethods();
+      if (!supportedMethods.includes(request.method)) {
+        errors.push(`Method not found: ${request.method}`);
       }
     }
     
@@ -101,20 +116,41 @@ export class MCPProtocolHandler implements ProtocolHandler {
     let mcpError: MCPError;
     
     if (error instanceof ProtocolError) {
-      mcpError = {
-        code: -32700,
-        message: error.message,
-        data: error.details,
-      };
+      // Map protocol errors to appropriate JSON-RPC 2.0 error codes
+      if (error.message.includes('Invalid JSON')) {
+        mcpError = {
+          code: MCP_ERROR_CODES.PARSE_ERROR,
+          message: error.message,
+          data: error.details,
+        };
+      } else if (error.message.includes('Invalid request structure')) {
+        mcpError = {
+          code: MCP_ERROR_CODES.INVALID_REQUEST,
+          message: error.message,
+          data: error.details,
+        };
+      } else if (error.message.includes('Tool not found') || error.message.includes('Method not found')) {
+        mcpError = {
+          code: MCP_ERROR_CODES.METHOD_NOT_FOUND,
+          message: error.message,
+          data: error.details,
+        };
+      } else {
+        mcpError = {
+          code: MCP_ERROR_CODES.INVALID_PARAMS,
+          message: error.message,
+          data: error.details,
+        };
+      }
     } else if (error instanceof ToolExecutionError) {
       mcpError = {
-        code: -32603,
+        code: MCP_ERROR_CODES.INTERNAL_ERROR,
         message: error.message,
         data: error.details,
       };
     } else {
       mcpError = {
-        code: -32603,
+        code: MCP_ERROR_CODES.INTERNAL_ERROR,
         message: 'Internal error',
         data: { originalError: error.message },
       };

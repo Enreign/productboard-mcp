@@ -28,9 +28,9 @@ export class Logger {
             ignore: 'pid,hostname',
           },
         },
-      });
+      }, process.stderr);
     } else {
-      this.pino = pino(options);
+      this.pino = pino(options, process.stderr);
     }
   }
 

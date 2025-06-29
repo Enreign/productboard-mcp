@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface DeleteWebhookParams {
   id: string;
@@ -21,6 +22,11 @@ export class DeleteWebhookTool extends BaseTool<DeleteWebhookParams> {
             description: 'Webhook ID to delete',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.WEBHOOKS_DELETE],
+        minimumAccessLevel: AccessLevel.ADMIN,
+        description: 'Requires admin access for webhooks',
       },
       apiClient,
       logger

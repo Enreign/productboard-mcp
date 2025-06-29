@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface ListCustomFieldsParams {
   entity_type?: 'feature' | 'note' | 'objective';
@@ -32,6 +33,11 @@ export class ListCustomFieldsTool extends BaseTool<ListCustomFieldsParams> {
             description: 'Filter by required status',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.CUSTOM_FIELDS_READ],
+        minimumAccessLevel: AccessLevel.READ,
+        description: 'Requires read access to custom fields',
       },
       apiClient,
       logger

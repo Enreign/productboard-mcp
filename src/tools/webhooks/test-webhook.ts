@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface TestWebhookParams {
   id: string;
@@ -27,6 +28,11 @@ export class TestWebhookTool extends BaseTool<TestWebhookParams> {
             description: 'Type of test event to send',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.WEBHOOKS_WRITE],
+        minimumAccessLevel: AccessLevel.ADMIN,
+        description: 'Requires admin access for webhooks',
       },
       apiClient,
       logger

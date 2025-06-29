@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface BulkUpdateFeaturesParams {
   feature_ids: string[];
@@ -47,6 +48,11 @@ export class BulkUpdateFeaturesTool extends BaseTool<BulkUpdateFeaturesParams> {
             description: 'Fields to update',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.BULK_OPERATIONS],
+        minimumAccessLevel: AccessLevel.WRITE,
+        description: 'Requires write access for bulk operations',
       },
       apiClient,
       logger

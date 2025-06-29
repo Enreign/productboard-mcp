@@ -75,6 +75,22 @@ export class ConfigurationError extends MCPError {
   }
 }
 
+export class ResourceNotFoundError extends MCPError {
+  constructor(resourceName: string) {
+    super(`Resource not found: ${resourceName}`, 'RESOURCE_NOT_FOUND', 404, { resourceName });
+    this.name = 'ResourceNotFoundError';
+    Object.setPrototypeOf(this, ResourceNotFoundError.prototype);
+  }
+}
+
+export class PromptNotFoundError extends MCPError {
+  constructor(promptName: string) {
+    super(`Prompt not found: ${promptName}`, 'PROMPT_NOT_FOUND', 404, { promptName });
+    this.name = 'PromptNotFoundError';
+    Object.setPrototypeOf(this, PromptNotFoundError.prototype);
+  }
+}
+
 export function createErrorResponse(error: unknown): Record<string, unknown> {
   if (error instanceof MCPError) {
     return error.toJSON();

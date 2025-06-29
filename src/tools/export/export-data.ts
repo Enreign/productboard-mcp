@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface ExportDataParams {
   export_type: 'features' | 'notes' | 'products' | 'objectives' | 'all';
@@ -77,6 +78,11 @@ export class ExportDataTool extends BaseTool<ExportDataParams> {
             description: 'Email address to send the export to',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.EXPORT_DATA],
+        minimumAccessLevel: AccessLevel.ADMIN,
+        description: 'Requires admin access for data export',
       },
       apiClient,
       logger

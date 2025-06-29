@@ -54,6 +54,6 @@ async function main(): Promise<void> {
 
 // Run main function
 main().catch((error) => {
-  console.error('Unhandled error:', error);
+  process.stderr.write(`Unhandled error: ${error}\n`);
   process.exit(1);
 });

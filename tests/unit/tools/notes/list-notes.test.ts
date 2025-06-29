@@ -103,12 +103,8 @@ describe('ListNotesTool', () => {
       expect(result).toEqual({
         success: true,
         data: {
-          notes: {
-            data: mockNotes,
-            links: { next: null },
-          },
-          total: 0, // Implementation calculates total from response, not mockNotes
-          hasMore: false,
+          data: mockNotes,
+          links: { next: null },
         },
       });
 
@@ -131,7 +127,7 @@ describe('ListNotesTool', () => {
         params: { feature_id: 'feat-123', limit: 20 },
       });
 
-      expect((result as any).data.notes.data).toHaveLength(1);
+      expect((result as any).data.data).toHaveLength(1);
     });
 
     it('should filter by customer_email', async () => {
@@ -224,7 +220,13 @@ describe('ListNotesTool', () => {
 
       const result = await tool.execute({});
 
-      expect((result as any).data.hasMore).toBe(false); // Implementation doesn't check pagination links
+      expect(result).toEqual({
+        success: true,
+        data: {
+          data: mockNotes,
+          links: { next: '/notes?offset=20' },
+        },
+      });
     });
 
     it('should validate limit range', async () => {
@@ -249,12 +251,8 @@ describe('ListNotesTool', () => {
       expect(result).toEqual({
         success: true,
         data: {
-          notes: {
-            data: [],
-            links: {},
-          },
-          total: 0,
-          hasMore: false,
+          data: [],
+          links: {},
         },
       });
     });

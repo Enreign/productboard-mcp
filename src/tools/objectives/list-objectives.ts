@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface ListObjectivesParams {
   status?: 'active' | 'completed' | 'cancelled';
@@ -48,6 +49,11 @@ export class ListObjectivesTool extends BaseTool<ListObjectivesParams> {
             description: 'Number of objectives to skip',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.OBJECTIVES_READ],
+        minimumAccessLevel: AccessLevel.READ,
+        description: 'Requires read access to objectives',
       },
       apiClient,
       logger

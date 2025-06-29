@@ -1,6 +1,7 @@
 import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface UpdateFeatureParams {
   id: string;
@@ -55,6 +56,11 @@ export class UpdateFeatureTool extends BaseTool<UpdateFeatureParams> {
             description: 'Replace all tags',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.FEATURES_WRITE],
+        minimumAccessLevel: AccessLevel.WRITE,
+        description: 'Requires write access to features',
       },
       apiClient,
       logger

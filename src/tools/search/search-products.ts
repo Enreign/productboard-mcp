@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface SearchProductsParams {
   query: string;
@@ -42,6 +43,11 @@ export class SearchProductsTool extends BaseTool<SearchProductsParams> {
             description: 'Number of results to skip',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.SEARCH],
+        minimumAccessLevel: AccessLevel.READ,
+        description: 'Requires search access',
       },
       apiClient,
       logger

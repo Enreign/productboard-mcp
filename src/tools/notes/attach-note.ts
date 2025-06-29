@@ -1,6 +1,7 @@
 import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '@api/index.js';
 import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface AttachNoteParams {
   note_id: string;
@@ -27,6 +28,11 @@ export class AttachNoteTool extends BaseTool<AttachNoteParams> {
             description: 'Feature IDs to link the note to',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.NOTES_WRITE],
+        minimumAccessLevel: AccessLevel.WRITE,
+        description: 'Requires write access to notes',
       },
       apiClient,
       logger

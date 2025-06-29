@@ -1,7 +1,7 @@
 import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
-
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 interface ListProductsParams {
   parent_id?: string;
   include_components?: boolean;
@@ -31,6 +31,11 @@ export class ListProductsTool extends BaseTool<ListProductsParams> {
             description: 'Include archived products',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.PRODUCTS_READ],
+        minimumAccessLevel: AccessLevel.READ,
+        description: 'Requires read access to products',
       },
       apiClient,
       logger

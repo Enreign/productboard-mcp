@@ -1,6 +1,7 @@
 import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface ListCompaniesParams {
   search?: string;
@@ -30,6 +31,11 @@ export class ListCompaniesTool extends BaseTool<ListCompaniesParams> {
             description: 'Filter by industry',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.COMPANIES_READ],
+        minimumAccessLevel: AccessLevel.READ,
+        description: 'Requires read access to companies',
       },
       apiClient,
       logger

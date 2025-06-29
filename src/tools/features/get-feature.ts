@@ -1,6 +1,7 @@
 import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface GetFeatureParams {
   id: string;
@@ -30,6 +31,11 @@ export class GetFeatureTool extends BaseTool<GetFeatureParams> {
           },
         },
       },
+      {
+        requiredPermissions: [Permission.FEATURES_READ],
+        minimumAccessLevel: AccessLevel.READ,
+        description: 'Requires read access to features',
+      },
       apiClient,
       logger
     );
@@ -47,7 +53,7 @@ export class GetFeatureTool extends BaseTool<GetFeatureParams> {
 
     return {
       success: true,
-      data: response,
+      data: (response as any).data || response,
     };
   }
 }

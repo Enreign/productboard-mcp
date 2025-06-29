@@ -262,7 +262,7 @@ export class ProductboardAPIClient {
 
   async testConnection(): Promise<boolean> {
     try {
-      await this.get('/users/current');
+      await this.get('/features');
       return true;
     } catch (error) {
       if (error instanceof APIAuthenticationError) {

@@ -3,11 +3,13 @@ import { Schema, ValidationResult, Validator } from '../middleware/validator.js'
 import { ProductboardAPIClient } from '../api/client.js';
 import { ValidationError as MCPValidationError, ToolExecutionError } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
+import { Permission, AccessLevel, UserPermissions, ToolPermissionMetadata } from '../auth/permissions.js';
 
 export abstract class BaseTool<TParams = unknown> implements Tool {
   public readonly name: string;
   public readonly description: string;
   public readonly parameters: Schema;
+  public readonly permissionMetadata: ToolPermissionMetadata;
   
   protected validator: Validator;
   protected apiClient: ProductboardAPIClient;
@@ -17,12 +19,14 @@ export abstract class BaseTool<TParams = unknown> implements Tool {
     name: string,
     description: string,
     parameters: Schema,
+    permissionMetadata: ToolPermissionMetadata,
     apiClient: ProductboardAPIClient,
     logger: Logger
   ) {
     this.name = name;
     this.description = description;
     this.parameters = parameters;
+    this.permissionMetadata = permissionMetadata;
     this.apiClient = apiClient;
     this.logger = logger;
     this.validator = new Validator();
@@ -83,11 +87,70 @@ export abstract class BaseTool<TParams = unknown> implements Tool {
     );
   }
 
-  getMetadata(): { name: string; description: string; inputSchema: Schema } {
+  getMetadata(): { name: string; description: string; inputSchema: Schema; permissions: ToolPermissionMetadata } {
     return {
       name: this.name,
       description: this.description,
       inputSchema: this.parameters,
+      permissions: this.permissionMetadata,
     };
+  }
+
+  /**
+   * Check if this tool is available for the given user permissions
+   */
+  isAvailableForUser(userPermissions: UserPermissions): boolean {
+    // Check minimum access level
+    const accessLevelOrder = {
+      [AccessLevel.READ]: 0,
+      [AccessLevel.WRITE]: 1,
+      [AccessLevel.DELETE]: 2,
+      [AccessLevel.ADMIN]: 3,
+    };
+
+    const userAccessLevel = accessLevelOrder[userPermissions.accessLevel];
+    const requiredAccessLevel = accessLevelOrder[this.permissionMetadata.minimumAccessLevel];
+
+    if (userAccessLevel < requiredAccessLevel) {
+      return false;
+    }
+
+    // Check specific permissions
+    for (const requiredPermission of this.permissionMetadata.requiredPermissions) {
+      if (!userPermissions.permissions.has(requiredPermission)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Get a list of missing permissions for this tool
+   */
+  getMissingPermissions(userPermissions: UserPermissions): Permission[] {
+    const missing: Permission[] = [];
+
+    for (const requiredPermission of this.permissionMetadata.requiredPermissions) {
+      if (!userPermissions.permissions.has(requiredPermission)) {
+        missing.push(requiredPermission);
+      }
+    }
+
+    return missing;
+  }
+
+  /**
+   * Get the required access level for this tool
+   */
+  getRequiredAccessLevel(): AccessLevel {
+    return this.permissionMetadata.minimumAccessLevel;
+  }
+
+  /**
+   * Get all required permissions for this tool
+   */
+  getRequiredPermissions(): Permission[] {
+    return [...this.permissionMetadata.requiredPermissions];
   }
 }

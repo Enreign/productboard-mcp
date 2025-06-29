@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { AuthenticationType } from '@auth/types.js';
 import { LogLevel } from './logger.js';
+import { SamplingConfiguration } from '@core/types.js';
 
 export interface ServerConfig {
   port: number;
@@ -36,12 +37,25 @@ export interface CacheConfig {
   maxSize: number;
 }
 
+export interface ResourcesConfig {
+  enabled: boolean;
+  refreshInterval: number;
+}
+
+export interface PromptsConfig {
+  enabled: boolean;
+  templatesPath: string;
+}
+
 export interface Config {
   server: ServerConfig;
   auth: AuthConfig;
   api: APIConfig;
   rateLimit: RateLimitConfig;
   cache: CacheConfig;
+  sampling?: SamplingConfiguration;
+  resources?: ResourcesConfig;
+  prompts?: PromptsConfig;
   logLevel: LogLevel;
   logPretty: boolean;
   nodeEnv: string;
@@ -116,6 +130,15 @@ export class ConfigManager {
       api: { ...defaults.api, ...envConfig.api },
       rateLimit: { ...defaults.rateLimit, ...envConfig.rateLimit },
       cache: { ...defaults.cache, ...envConfig.cache },
+      sampling: { ...defaults.sampling, ...envConfig.sampling },
+      resources: { 
+        enabled: envConfig.resources?.enabled ?? defaults.resources?.enabled ?? false,
+        refreshInterval: envConfig.resources?.refreshInterval ?? defaults.resources?.refreshInterval ?? 300000,
+      },
+      prompts: { 
+        enabled: envConfig.prompts?.enabled ?? defaults.prompts?.enabled ?? false,
+        templatesPath: envConfig.prompts?.templatesPath ?? defaults.prompts?.templatesPath ?? './prompts',
+      },
       logLevel: envConfig.logLevel || defaults.logLevel || 'info',
       logPretty: envConfig.logPretty ?? defaults.logPretty ?? true,
       nodeEnv: envConfig.nodeEnv || defaults.nodeEnv || 'development',

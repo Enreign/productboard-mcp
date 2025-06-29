@@ -234,8 +234,12 @@ describe('UpdateFeatureTool', () => {
       };
       mockClient.patch.mockRejectedValueOnce(error);
 
-      await expect(tool.execute({ id: 'feat_nonexistent', name: 'Test' }))
-        .rejects.toThrow('Tool pb_feature_update execution failed');
+      const result = await tool.execute({ id: 'feat_nonexistent', name: 'Test' });
+      
+      expect(result).toEqual({
+        success: false,
+        error: 'Failed to update feature: Not found',
+      });
     });
 
     it('should handle API validation errors', async () => {
@@ -263,8 +267,12 @@ describe('UpdateFeatureTool', () => {
       };
       mockClient.patch.mockRejectedValueOnce(error);
 
-      await expect(tool.execute(validInput))
-        .rejects.toThrow('Tool pb_feature_update execution failed');
+      const result = await tool.execute(validInput);
+      
+      expect(result).toEqual({
+        success: false,
+        error: 'Failed to update feature: Validation error',
+      });
     });
 
     it('should handle concurrent update conflicts', async () => {
@@ -286,8 +294,12 @@ describe('UpdateFeatureTool', () => {
       };
       mockClient.patch.mockRejectedValueOnce(error);
 
-      await expect(tool.execute(validInput))
-        .rejects.toThrow('Tool pb_feature_update execution failed');
+      const result = await tool.execute(validInput);
+      
+      expect(result).toEqual({
+        success: false,
+        error: 'Failed to update feature: Conflict',
+      });
     });
 
     it('should throw error if client not initialized', async () => {
@@ -298,8 +310,12 @@ describe('UpdateFeatureTool', () => {
         status: 'validation' as const,
         priority: 'critical' as const,
       };
-      await expect(uninitializedTool.execute(validInput))
-        .rejects.toThrow('Tool pb_feature_update execution failed');
+      const result = await uninitializedTool.execute(validInput);
+      
+      expect(result).toEqual({
+        success: false,
+        error: expect.stringContaining('Failed to update feature:'),
+      });
     });
 
     it('should exclude ID from update payload', async () => {

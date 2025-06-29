@@ -46,6 +46,7 @@ export class ToolRegistry {
         name: tool.name,
         description: tool.description,
         inputSchema: tool.parameters,
+        permissions: tool.permissionMetadata,
       });
     }
     

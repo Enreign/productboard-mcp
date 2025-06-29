@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface UpdateObjectiveParams {
   id: string;
@@ -55,6 +56,11 @@ export class UpdateObjectiveTool extends BaseTool<UpdateObjectiveParams> {
             description: 'Objective period',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.OBJECTIVES_WRITE],
+        minimumAccessLevel: AccessLevel.WRITE,
+        description: 'Requires write access to objectives',
       },
       apiClient,
       logger

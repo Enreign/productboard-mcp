@@ -172,7 +172,7 @@ describe('MCPProtocolHandler', () => {
       const validation = protocolHandler.validateRequest(request);
 
       expect(validation.valid).toBe(false);
-      expect(validation.errors).toContain('Unknown tool: pb_unknown_tool');
+      expect(validation.errors).toContain('Tool not found: pb_unknown_tool');
     });
 
     it('should validate tool parameters against schema', () => {
@@ -278,7 +278,7 @@ describe('MCPProtocolHandler', () => {
       expect(response).toEqual({
         id: '1',
         error: {
-          code: -32700,
+          code: -32602,
           message: 'Invalid request format',
           data: { field: 'method' },
         },
@@ -398,7 +398,7 @@ describe('MCPProtocolHandler', () => {
       const validation = protocolHandler.validateRequest(request);
 
       expect(validation.valid).toBe(false);
-      expect(validation.errors).toContain(`Unknown tool: ${longMethodName}`);
+      expect(validation.errors).toContain(`Tool not found: ${longMethodName}`);
     });
 
     it('should handle concurrent tool invocations', async () => {

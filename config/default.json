@@ -25,6 +25,21 @@
     "ttl": 300,
     "maxSize": 100
   },
+  "sampling": {
+    "temperature": 0.7,
+    "max_tokens": 4096,
+    "top_p": 0.95,
+    "top_k": 50,
+    "stop_sequences": []
+  },
+  "resources": {
+    "enabled": true,
+    "refreshInterval": 300
+  },
+  "prompts": {
+    "enabled": true,
+    "templatesPath": "./prompts"
+  },
   "logLevel": "info",
   "logPretty": true
 }

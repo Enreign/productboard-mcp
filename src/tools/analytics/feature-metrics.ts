@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface FeatureMetricsParams {
   feature_ids?: string[];
@@ -47,6 +48,11 @@ export class FeatureMetricsTool extends BaseTool<FeatureMetricsParams> {
             description: 'Types of metrics to retrieve',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.ANALYTICS_READ],
+        minimumAccessLevel: AccessLevel.ADMIN,
+        description: 'Requires admin access for analytics',
       },
       apiClient,
       logger

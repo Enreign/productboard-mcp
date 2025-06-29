@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface BulkDeleteFeaturesParams {
   feature_ids: string[];
@@ -38,6 +39,11 @@ export class BulkDeleteFeaturesTool extends BaseTool<BulkDeleteFeaturesParams> {
             description: 'Number of features to delete per batch',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.BULK_OPERATIONS],
+        minimumAccessLevel: AccessLevel.WRITE,
+        description: 'Requires write access for bulk operations',
       },
       apiClient,
       logger

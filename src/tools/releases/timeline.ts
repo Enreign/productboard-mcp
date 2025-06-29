@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface ReleaseTimelineParams {
   release_group_id?: string;
@@ -38,6 +39,11 @@ export class ReleaseTimelineTool extends BaseTool<ReleaseTimelineParams> {
             description: 'Include features in timeline',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.RELEASES_READ],
+        minimumAccessLevel: AccessLevel.READ,
+        description: 'Requires read access to releases',
       },
       apiClient,
       logger

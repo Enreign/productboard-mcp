@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface UserEngagementParams {
   user_id?: string;
@@ -46,6 +47,11 @@ export class UserEngagementTool extends BaseTool<UserEngagementParams> {
             description: 'Types of engagement to track',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.ANALYTICS_READ],
+        minimumAccessLevel: AccessLevel.ADMIN,
+        description: 'Requires admin access for analytics',
       },
       apiClient,
       logger

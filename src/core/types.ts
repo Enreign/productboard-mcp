@@ -1,4 +1,5 @@
 import { Schema } from '@middleware/validator.js';
+import { ToolPermissionMetadata, UserPermissions } from '@auth/permissions.js';
 
 export interface MCPRequest {
   id: string | number;
@@ -22,13 +23,16 @@ export interface Tool {
   name: string;
   description: string;
   parameters: Schema;
+  permissionMetadata: ToolPermissionMetadata;
   execute(params: unknown): Promise<unknown>;
+  isAvailableForUser(userPermissions: UserPermissions): boolean;
 }
 
 export interface ToolDescriptor {
   name: string;
   description: string;
   inputSchema: Schema;
+  permissions?: ToolPermissionMetadata;
 }
 
 export interface ToolExecutionResult {
@@ -66,4 +70,76 @@ export interface ProtocolHandler {
 export interface ValidationResult {
   valid: boolean;
   errors?: string[];
+}
+
+// Resource types
+export interface Resource {
+  name: string;
+  description: string;
+  uri: string;
+  mimeType?: string;
+  retrieve(): Promise<ResourceContent>;
+}
+
+export interface ResourceDescriptor {
+  name: string;
+  description: string;
+  uri: string;
+  mimeType?: string;
+}
+
+export interface ResourceContent {
+  uri: string;
+  mimeType?: string;
+  text?: string;
+  blob?: string;
+}
+
+// Prompt types
+export interface Prompt {
+  name: string;
+  description: string;
+  arguments?: PromptArgument[];
+  execute(params: unknown): Promise<PromptMessage[]>;
+}
+
+export interface PromptDescriptor {
+  name: string;
+  description: string;
+  arguments?: PromptArgument[];
+}
+
+export interface PromptArgument {
+  name: string;
+  description: string;
+  required?: boolean;
+}
+
+export interface PromptMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: {
+    type: 'text' | 'image';
+    text?: string;
+    image_url?: {
+      url: string;
+    };
+  };
+}
+
+// Sampling configuration types
+export interface SamplingConfiguration {
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  top_k?: number;
+  stop_sequences?: string[];
+}
+
+export interface ModelPreferences {
+  hints?: {
+    name?: string;
+  };
+  costPriority?: number;
+  speedPriority?: number;
+  intelligencePriority?: number;
 }

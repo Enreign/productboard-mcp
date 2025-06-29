@@ -1,7 +1,7 @@
 import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
-
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 interface ProductHierarchyParams {
   product_id?: string;
   depth?: number;
@@ -33,6 +33,11 @@ export class ProductHierarchyTool extends BaseTool<ProductHierarchyParams> {
             description: 'Include features at each level',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.PRODUCTS_READ],
+        minimumAccessLevel: AccessLevel.READ,
+        description: 'Requires read access to products',
       },
       apiClient,
       logger

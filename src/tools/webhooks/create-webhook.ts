@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface CreateWebhookParams {
   name: string;
@@ -45,6 +46,11 @@ export class CreateWebhookTool extends BaseTool<CreateWebhookParams> {
             description: 'Whether webhook is active',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.WEBHOOKS_WRITE],
+        minimumAccessLevel: AccessLevel.ADMIN,
+        description: 'Requires admin access for webhooks',
       },
       apiClient,
       logger

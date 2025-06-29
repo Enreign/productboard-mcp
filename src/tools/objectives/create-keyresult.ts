@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface CreateKeyResultParams {
   objective_id: string;
@@ -47,6 +48,11 @@ export class CreateKeyResultTool extends BaseTool<CreateKeyResultParams> {
             description: 'Measurement unit (e.g., "users", "dollars")',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.OBJECTIVES_WRITE],
+        minimumAccessLevel: AccessLevel.WRITE,
+        description: 'Requires write access to objectives',
       },
       apiClient,
       logger

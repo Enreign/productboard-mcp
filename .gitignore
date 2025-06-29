@@ -138,6 +138,11 @@ mcp-server.log
 memory/
 coordination/
 claude-flow/
+claude-flow
 .claude/
 .roo/
 .roomodes
+CLAUDE.md
+
+# Test files
+test-tool-registration.js

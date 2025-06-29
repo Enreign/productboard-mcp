@@ -1,6 +1,7 @@
 import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface ListFeaturesParams {
   status?: 'new' | 'in_progress' | 'validation' | 'done' | 'archived';
@@ -76,21 +77,21 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
           },
         },
       },
+      {
+        requiredPermissions: [Permission.FEATURES_READ],
+        minimumAccessLevel: AccessLevel.READ,
+        description: 'Requires read access to features',
+      },
       apiClient,
       logger
     );
   }
 
   protected async executeInternal(params: ListFeaturesParams): Promise<unknown> {
-    // Apply defaults and convert array types to strings for QueryParams
-    const queryParams: Record<string, any> = {
-      limit: params.limit || 20,
-      offset: params.offset || 0,
-      sort: params.sort || 'created_at',
-      order: params.order || 'desc',
-    };
+    // Build query parameters with only supported API parameters
+    const queryParams: Record<string, any> = {};
 
-    // Add other parameters, converting arrays to strings
+    // Add supported parameters only
     if (params.status) queryParams.status = params.status;
     if (params.product_id) queryParams.product_id = params.product_id;
     if (params.component_id) queryParams.component_id = params.component_id;
@@ -100,22 +101,64 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
       queryParams.tags = params.tags.join(',');
     }
 
+    // Note: Productboard API /features endpoint does not support limit, offset, sort, order parameters
     const response = await this.apiClient.get('/features', queryParams);
     
-    // Ensure consistent response structure
-    if (response && !(response as any).data && !(response as any).pagination) {
-      // Transform if needed to match expected structure
-      return {
-        data: Array.isArray(response) ? response : (response as any).items || [],
-        pagination: (response as any).meta?.pagination || {
-          total: Array.isArray(response) ? response.length : 0,
-          offset: queryParams.offset,
-          limit: queryParams.limit,
-          has_more: false,
-        },
-      };
+    // Extract feature data
+    let features: any[] = [];
+    if (response && (response as any).data) {
+      features = (response as any).data;
+    } else if (Array.isArray(response)) {
+      features = response;
     }
     
-    return response;
+    // Apply client-side pagination if requested
+    const requestedLimit = params.limit || 20;
+    const requestedOffset = params.offset || 0;
+    const paginatedFeatures = features.slice(requestedOffset, requestedOffset + requestedLimit);
+    
+    // Helper function to strip HTML tags
+    const stripHtml = (html: string): string => {
+      return html
+        .replace(/<[^>]*>/g, '') // Remove HTML tags
+        .replace(/&nbsp;/g, ' ') // Replace non-breaking spaces
+        .replace(/&lt;/g, '<')   // Replace HTML entities
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/\s+/g, ' ')    // Normalize whitespace
+        .trim();
+    };
+    
+    // Format response for MCP protocol
+    const formattedFeatures = paginatedFeatures.map((feature: any) => ({
+      id: feature.id,
+      name: feature.name || 'Untitled Feature',
+      description: feature.description ? stripHtml(feature.description) : '',
+      status: feature.status?.name || 'Unknown',
+      owner: feature.owner?.email || 'Unassigned',
+      createdAt: feature.createdAt,
+      updatedAt: feature.updatedAt,
+    }));
+    
+    // Create a text summary of the features
+    const summary = formattedFeatures.length > 0
+      ? `Found ${features.length} features total, showing ${formattedFeatures.length} features:\n\n` +
+        formattedFeatures.map((f, i) => 
+          `${i + 1}. ${f.name}\n` +
+          `   Status: ${f.status}\n` +
+          `   Owner: ${f.owner}\n` +
+          `   Description: ${f.description || 'No description'}\n`
+        ).join('\n')
+      : 'No features found.';
+    
+    // Return in MCP expected format
+    return {
+      content: [
+        {
+          type: 'text',
+          text: summary
+        }
+      ]
+    };
   }
 }

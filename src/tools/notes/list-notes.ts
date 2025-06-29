@@ -1,6 +1,7 @@
 import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '@api/index.js';
 import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface ListNotesParams {
   feature_id?: string;
@@ -55,6 +56,11 @@ export class ListNotesTool extends BaseTool<ListNotesParams> {
           },
         },
       },
+      {
+        requiredPermissions: [Permission.NOTES_READ],
+        minimumAccessLevel: AccessLevel.READ,
+        description: 'Requires read access to notes',
+      },
       apiClient,
       logger
     );
@@ -80,9 +86,45 @@ export class ListNotesTool extends BaseTool<ListNotesParams> {
       params: queryParams,
     });
 
+    // Extract notes data
+    let notes: any[] = [];
+    if (response && (response as any).data) {
+      notes = (response as any).data;
+    } else if (Array.isArray(response)) {
+      notes = response;
+    }
+    
+    // Format response for MCP protocol
+    const formattedNotes = notes.map((note: any) => ({
+      id: note.id,
+      title: note.title || note.content?.substring(0, 50) || 'Untitled Note',
+      content: note.content || '',
+      customer: note.customer?.email || 'Unknown',
+      company: note.company?.name || 'Unknown',
+      createdAt: note.created_at || note.createdAt,
+      tags: note.tags || [],
+    }));
+    
+    // Create a text summary of the notes
+    const summary = formattedNotes.length > 0
+      ? `Found ${formattedNotes.length} notes:\n\n` +
+        formattedNotes.map((n, i) => 
+          `${i + 1}. ${n.title}\n` +
+          `   Customer: ${n.customer}\n` +
+          `   Company: ${n.company}\n` +
+          `   Content: ${n.content.substring(0, 100)}${n.content.length > 100 ? '...' : ''}\n` +
+          `   Tags: ${n.tags.length > 0 ? n.tags.join(', ') : 'None'}\n`
+        ).join('\n')
+      : 'No notes found.';
+    
+    // Return in MCP expected format
     return {
-      success: true,
-      data: response,
+      content: [
+        {
+          type: 'text',
+          text: summary
+        }
+      ]
     };
   }
 }

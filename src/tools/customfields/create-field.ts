@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface CreateCustomFieldParams {
   name: string;
@@ -50,6 +51,11 @@ export class CreateCustomFieldTool extends BaseTool<CreateCustomFieldParams> {
             description: 'Entity type this field applies to',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.CUSTOM_FIELDS_WRITE],
+        minimumAccessLevel: AccessLevel.WRITE,
+        description: 'Requires write access to custom fields',
       },
       apiClient,
       logger

@@ -2,6 +2,7 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
 import { ToolExecutionResult } from '../../core/types.js';
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 
 interface BulkFeature {
   name: string;
@@ -84,6 +85,11 @@ export class BulkCreateFeaturesTool extends BaseTool<BulkCreateFeaturesParams> {
             description: 'Number of features to create per batch',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.BULK_OPERATIONS],
+        minimumAccessLevel: AccessLevel.WRITE,
+        description: 'Requires write access for bulk operations',
       },
       apiClient,
       logger

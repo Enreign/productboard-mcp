@@ -1,7 +1,7 @@
 import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '../../api/client.js';
 import { Logger } from '../../utils/logger.js';
-
+import { Permission, AccessLevel } from '../../auth/permissions.js';
 interface CreateProductParams {
   name: string;
   description?: string;
@@ -36,6 +36,11 @@ export class CreateProductTool extends BaseTool<CreateProductParams> {
             description: 'Product owner email',
           },
         },
+      },
+      {
+        requiredPermissions: [Permission.PRODUCTS_WRITE],
+        minimumAccessLevel: AccessLevel.WRITE,
+        description: 'Requires write access to products',
       },
       apiClient,
       logger
