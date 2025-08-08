@@ -1,17 +1,6 @@
 import { LRUCache } from 'lru-cache';
 import crypto from 'crypto';
-
-export interface CacheOptions {
-  enabled: boolean;
-  ttl: number;
-  maxSize: number;
-}
-
-export interface CacheableRequest {
-  tool: string;
-  method: string;
-  params?: unknown;
-}
+import { CacheOptions, CacheableRequest } from './types.js';
 
 export class CacheModule {
   private cache?: LRUCache<string, any>;

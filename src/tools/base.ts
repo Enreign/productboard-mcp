@@ -1,5 +1,6 @@
 import { Tool } from '../core/types.js';
-import { Schema, ValidationResult, Validator } from '../middleware/validator.js';
+import { Schema, ValidationResult } from '../middleware/types.js';
+import { Validator } from '../middleware/validator.js';
 import { ProductboardAPIClient } from '../api/client.js';
 import { ValidationError as MCPValidationError, ToolExecutionError } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';

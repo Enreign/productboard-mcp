@@ -24,7 +24,7 @@ import { PromptRegistry } from './prompt-registry.js';
 import { AuthenticationManager } from '@auth/index.js';
 import { AuthenticationType } from '@auth/types.js';
 import { PermissionDiscoveryService } from '@auth/permission-discovery.js';
-import { UserPermissions } from '@auth/permissions.js';
+import { UserPermissions, AccessLevel } from '@auth/permissions.js';
 import { ProductboardAPIClient } from '@api/index.js';
 import { RateLimiter, CacheModule } from '@middleware/index.js';
 import { Config, Logger } from '@utils/index.js';
@@ -329,16 +329,34 @@ export class ProductboardMCPServer {
       } catch (error) {
         this.metrics.requestsFailed++;
         logger.error('Tool execution failed', error);
-        
-        // Re-throw with proper error handling
+
+        const toolName = request.params && typeof request.params === 'object' && 'name' in request.params && typeof (request.params as any).name === 'string'
+          ? (request.params as any).name
+          : 'unknown';
+
+        // For read-only tools, return a safe, non-throwing result to avoid 500s in clients
+        try {
+          const tool = this.dependencies.toolRegistry.getTool(toolName);
+          if (tool && tool.permissionMetadata?.minimumAccessLevel === AccessLevel.READ) {
+            const message = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Unknown error during tool execution');
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Error executing ${toolName}: ${String(message)}`,
+                },
+              ],
+            } as any;
+          }
+        } catch (lookupError) {
+          // If tool lookup fails, fall through to standard error handling
+        }
+
+        // Re-throw with proper error handling for non-read tools or unknown cases
         if (error instanceof ProtocolError || error instanceof ToolExecutionError) {
           throw error;
         }
-        
-        const toolName = request.params && typeof request.params === 'object' && 'name' in request.params && typeof (request.params as any).name === 'string' 
-          ? (request.params as any).name 
-          : 'unknown';
-        
+
         throw new ToolExecutionError(
           error instanceof Error ? error.message : 'Unknown error during tool execution',
           toolName,

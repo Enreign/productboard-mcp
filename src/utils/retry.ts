@@ -1,10 +1,4 @@
-export interface RetryOptions {
-  maxAttempts: number;
-  backoffStrategy: 'exponential' | 'linear';
-  initialDelay: number;
-  maxDelay: number;
-  retryCondition?: (error: unknown) => boolean;
-}
+import { RetryOptions } from './types.js';
 
 export class RetryHandler {
   private readonly options: RetryOptions;

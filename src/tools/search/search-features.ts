@@ -121,13 +121,17 @@ export class SearchFeaturesTool extends BaseTool<SearchFeaturesParams> {
     try {
       this.logger.info('Searching features', { query: params.query });
 
+      // Build query params for /features endpoint (no generic search, use filters)
       const queryParams: Record<string, any> = {
-        q: params.query,
-        sort: params.sort || 'relevance',
-        order: params.order || 'desc',
         limit: params.limit || 20,
         offset: params.offset || 0,
       };
+
+      // Map sort options to what /features endpoint supports
+      if (params.sort === 'created_at' || params.sort === 'updated_at') {
+        queryParams.sort = params.sort;
+        queryParams.order = params.order || 'desc';
+      }
 
       if (params.filters) {
         if (params.filters.status?.length) queryParams.status = params.filters.status.join(',');
@@ -140,19 +144,35 @@ export class SearchFeaturesTool extends BaseTool<SearchFeaturesParams> {
         if (params.filters.updated_before) queryParams.updated_before = params.filters.updated_before;
       }
 
-      const response = await this.apiClient.makeRequest({
+      // Productboard API doesn't have a dedicated search endpoint
+      // Use the features endpoint with filtering instead
+      const response = await this.apiClient.makeRequest<any>({
         method: 'GET',
-        endpoint: '/search/features',
+        endpoint: '/features',
         params: queryParams,
       });
 
+      // If query is provided, filter results client-side
+      let filteredData = response;
+      if (params.query && params.query !== '*' && response?.data && Array.isArray(response.data)) {
+        const query = params.query.toLowerCase();
+        filteredData = {
+          ...response,
+          data: response.data.filter((feature: any) =>
+            feature.name?.toLowerCase().includes(query) ||
+            feature.description?.toLowerCase().includes(query) ||
+            feature.tags?.some((tag: any) => tag.name?.toLowerCase().includes(query))
+          )
+        };
+      }
+
       return {
         success: true,
-        data: response,
+        data: filteredData,
       };
     } catch (error) {
       this.logger.error('Failed to search features', error);
-      
+
       return {
         success: false,
         error: `Failed to search features: ${(error as Error).message}`,

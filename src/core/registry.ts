@@ -1,5 +1,5 @@
 import { Tool, ToolDescriptor } from './types.js';
-import { Schema } from '@middleware/validator.js';
+import { Schema } from '@middleware/types.js';
 import { ToolNotFoundError } from '@utils/errors.js';
 import { Logger } from '@utils/logger.js';
 

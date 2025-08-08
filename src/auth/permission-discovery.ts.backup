@@ -22,9 +22,6 @@ export class PermissionDiscoveryService {
   }
 
   async discoverUserPermissions(): Promise<UserPermissions> {
-    // Temporary fix: return read-only permissions without API testing
-    this.logger.info("Skipping permission discovery - assuming read-only access");
-    return this.createReadOnlyUserPermissions();
     this.logger.info('Starting permission discovery...');
 
     const testResults = await this.runPermissionTests();
@@ -363,48 +360,6 @@ export class PermissionDiscoveryService {
       isAdmin,
       permissions,
       capabilities,
-    };
-  }
-
-  private createReadOnlyUserPermissions(): UserPermissions {
-    const permissions = new Set<Permission>();
-    
-    // Add all read permissions
-    permissions.add(Permission.USERS_READ);
-    permissions.add(Permission.FEATURES_READ);
-    permissions.add(Permission.PRODUCTS_READ);
-    permissions.add(Permission.NOTES_READ);
-    permissions.add(Permission.COMPANIES_READ);
-    permissions.add(Permission.OBJECTIVES_READ);
-    permissions.add(Permission.RELEASES_READ);
-    permissions.add(Permission.CUSTOM_FIELDS_READ);
-    permissions.add(Permission.WEBHOOKS_READ);
-    permissions.add(Permission.SEARCH);
-    permissions.add(Permission.INTEGRATIONS_READ);
-    
-    return {
-      permissions,
-      accessLevel: AccessLevel.READ,
-      isReadOnly: true,
-      canWrite: false,
-      canDelete: false,
-      isAdmin: false,
-      capabilities: {
-        users: { read: true, write: false, admin: false },
-        features: { read: true, write: false, delete: false },
-        products: { read: true, write: false, delete: false },
-        notes: { read: true, write: false, delete: false },
-        companies: { read: true, write: false },
-        objectives: { read: true, write: false, delete: false },
-        releases: { read: true, write: false, delete: false },
-        customFields: { read: true, write: false, delete: false },
-        webhooks: { read: true, write: false, delete: false },
-        analytics: { read: false },
-        integrations: { read: true, write: false },
-        export: { data: false },
-        bulk: { operations: false },
-        search: { enabled: true },
-      },
     };
   }
 }

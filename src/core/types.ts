@@ -1,4 +1,4 @@
-import { Schema } from '@middleware/validator.js';
+import { Schema } from '@middleware/types.js';
 import { ToolPermissionMetadata, UserPermissions } from '@auth/permissions.js';
 
 export interface MCPRequest {

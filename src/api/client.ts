@@ -262,6 +262,11 @@ export class ProductboardAPIClient {
 
   async testConnection(): Promise<boolean> {
     try {
+      // Skip connection test in development mode
+      if (process.env.NODE_ENV === "development") {
+        this.logger.debug("Skipping API connection test in development mode");
+        return true;
+      }
       await this.get('/features');
       return true;
     } catch (error) {

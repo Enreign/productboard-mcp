@@ -1,16 +1,7 @@
-import { AuthHeaders, TokenResponse } from './types.js';
+import { AuthHeaders, TokenResponse, OAuth2Config } from './types.js';
 import { ProductboardAPIError } from '@api/errors.js';
 import axios, { AxiosError } from 'axios';
 import crypto from 'crypto';
-
-export interface OAuth2Config {
-  clientId: string;
-  clientSecret: string;
-  authorizationEndpoint: string;
-  tokenEndpoint: string;
-  redirectUri: string;
-  scope?: string;
-}
 
 export class OAuth2Auth {
   private config: OAuth2Config;
@@ -113,10 +104,12 @@ export class OAuth2Auth {
   }
 
   getHeaders(accessToken: string): AuthHeaders {
+    // Productboard recommends versioning via X-Version header
     return {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      'X-Version': '1',
     };
   }
 }

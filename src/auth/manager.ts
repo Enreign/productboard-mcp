@@ -4,9 +4,10 @@ import {
   Credentials,
   AuthHeaders,
   AuthConfig,
+  OAuth2Config,
 } from './types.js';
 import { BearerTokenAuth } from './bearer.js';
-import { OAuth2Auth, OAuth2Config } from './oauth2.js';
+import { OAuth2Auth } from './oauth2.js';
 import { SecureCredentialStore } from './store.js';
 import { ProductboardAPIError } from '@api/errors.js';
 import { Logger } from '@utils/logger.js';

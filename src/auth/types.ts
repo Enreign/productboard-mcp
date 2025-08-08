@@ -46,3 +46,12 @@ export interface AuthManagerInterface {
   isTokenExpired(): boolean;
   getTokenExpiry(): Date | null;
 }
+
+export interface OAuth2Config {
+  clientId: string;
+  clientSecret: string;
+  authorizationEndpoint: string;
+  tokenEndpoint: string;
+  redirectUri: string;
+  scope?: string;
+}

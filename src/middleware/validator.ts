@@ -1,33 +1,5 @@
 import { Validator as JSONSchemaValidator, ValidationError as JSONSchemaError } from 'jsonschema';
-
-export interface Schema {
-  type?: string;
-  properties?: Record<string, Schema>;
-  required?: string[];
-  items?: Schema;
-  enum?: unknown[];
-  minimum?: number;
-  maximum?: number;
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
-  format?: string;
-  additionalProperties?: boolean | Schema;
-  [key: string]: unknown;
-}
-
-export interface ValidationResult {
-  valid: boolean;
-  errors: ValidationError[];
-}
-
-export interface ValidationError {
-  path: string;
-  message: string;
-  value?: unknown;
-}
-
-export type ValidatorFunction = (value: unknown, schema: Schema) => ValidationResult;
+import { Schema, ValidationResult, ValidationError, ValidatorFunction } from './types.js';
 
 export class Validator {
   private jsonValidator: JSONSchemaValidator;

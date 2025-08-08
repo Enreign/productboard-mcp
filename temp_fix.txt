@@ -1,0 +1,7 @@
+  private analyzeTestResults(testResults: PermissionTestResult[]): UserPermissions {
+    // For now, assume read-only access to all resources
+    if (testResults.length === 0) {
+      return this.createReadOnlyPermissions();
+    }
+    
+    const permissions = new Set<Permission>();

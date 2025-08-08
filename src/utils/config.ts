@@ -1,65 +1,8 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { AuthenticationType } from '@auth/types.js';
-import { LogLevel } from './logger.js';
-import { SamplingConfiguration } from '@core/types.js';
-
-export interface ServerConfig {
-  port: number;
-  host: string;
-  timeout: number;
-}
-
-export interface AuthConfig {
-  type: AuthenticationType;
-  token?: string;
-  clientId?: string;
-  clientSecret?: string;
-  redirectUri?: string;
-}
-
-export interface APIConfig {
-  baseUrl: string;
-  timeout: number;
-  retryAttempts: number;
-  retryDelay: number;
-}
-
-export interface RateLimitConfig {
-  global: number;
-  windowMs: number;
-  perTool?: Record<string, number>;
-}
-
-export interface CacheConfig {
-  enabled: boolean;
-  ttl: number;
-  maxSize: number;
-}
-
-export interface ResourcesConfig {
-  enabled: boolean;
-  refreshInterval: number;
-}
-
-export interface PromptsConfig {
-  enabled: boolean;
-  templatesPath: string;
-}
-
-export interface Config {
-  server: ServerConfig;
-  auth: AuthConfig;
-  api: APIConfig;
-  rateLimit: RateLimitConfig;
-  cache: CacheConfig;
-  sampling?: SamplingConfiguration;
-  resources?: ResourcesConfig;
-  prompts?: PromptsConfig;
-  logLevel: LogLevel;
-  logPretty: boolean;
-  nodeEnv: string;
-}
+import { LogLevel } from './types.js';
+import { Config } from './types.js';
 
 export class ConfigManager {
   private config: Config;
@@ -103,7 +46,8 @@ export class ConfigManager {
         redirectUri: env.PRODUCTBOARD_OAUTH_REDIRECT_URI,
       },
       api: {
-        baseUrl: env.PRODUCTBOARD_API_BASE_URL || 'https://api.productboard.com/v1',
+        // Productboard API uses versioning via the X-Version header, not via path segments
+        baseUrl: env.PRODUCTBOARD_API_BASE_URL || 'https://api.productboard.com',
         timeout: parseInt(env.PRODUCTBOARD_API_TIMEOUT || '10000'),
         retryAttempts: parseInt(env.API_RETRY_ATTEMPTS || '3'),
         retryDelay: parseInt(env.API_RETRY_DELAY || '1000'),

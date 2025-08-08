@@ -1,12 +1,5 @@
 import pino, { Logger as PinoLogger } from 'pino';
-
-export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
-
-export interface LoggerConfig {
-  level: LogLevel;
-  pretty?: boolean;
-  name?: string;
-}
+import { LoggerConfig } from './types.js';
 
 export class Logger {
   private pino: PinoLogger;

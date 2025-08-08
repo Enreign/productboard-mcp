@@ -53,7 +53,7 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
           limit: {
             type: 'integer',
             minimum: 1,
-            maximum: 100,
+            maximum: 1000,
             default: 20,
             description: 'Number of results per page',
           },
