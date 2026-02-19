@@ -99,7 +99,7 @@ describe('ListNotesTool', () => {
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/notes',
-        params: { limit: 20 },
+        params: {},
       });
 
       expect(result.content[0].type).toBe('text');
@@ -123,7 +123,7 @@ describe('ListNotesTool', () => {
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/notes',
-        params: { feature_id: 'feat-123', limit: 20 },
+        params: { feature_id: 'feat-123' },
       });
 
       expect(result.content[0].text).toContain('Found 1 notes');
@@ -140,7 +140,7 @@ describe('ListNotesTool', () => {
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/notes',
-        params: { customer_email: 'customer1@example.com', limit: 20 },
+        params: { customer_email: 'customer1@example.com' },
       });
     });
 
@@ -155,7 +155,7 @@ describe('ListNotesTool', () => {
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/notes',
-        params: { company_name: 'Acme Corp', limit: 20 },
+        params: { company_name: 'Acme Corp' },
       });
     });
 
@@ -170,7 +170,7 @@ describe('ListNotesTool', () => {
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/notes',
-        params: { tags: ['important', 'feature-request'], limit: 20 },
+        params: { tags: ['important', 'feature-request'] },
       });
     });
 
@@ -191,7 +191,6 @@ describe('ListNotesTool', () => {
         params: {
           date_from: '2025-01-01',
           date_to: '2025-01-31',
-          limit: 20,
         },
       });
     });
@@ -202,13 +201,17 @@ describe('ListNotesTool', () => {
         links: {},
       });
 
-      await tool.execute({ limit: 50 });
+      const result = await tool.execute({ limit: 1 });
 
+      // limit is applied client-side, not sent to API
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/notes',
-        params: { limit: 50 },
+        params: {},
       });
+
+      // Only 1 note returned due to client-side limit
+      expect(result.content[0].text).toContain('showing 1');
     });
 
     it('should handle pagination', async () => {

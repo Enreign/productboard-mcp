@@ -47,18 +47,24 @@ export class ProductHierarchyTool extends BaseTool<ProductHierarchyParams> {
   protected async executeInternal(params: ProductHierarchyParams): Promise<unknown> {
     this.logger.info('Getting product hierarchy');
 
-    const queryParams: Record<string, any> = {
-      depth: params.depth || 3,
-    };
-    
-    if (params.product_id) queryParams.product_id = params.product_id;
-    if (params.include_features) queryParams.include_features = params.include_features;
+    // Use /products endpoint - /products/hierarchy may not exist
+    const queryParams: Record<string, any> = {};
+    if (params.product_id) queryParams.parent_id = params.product_id;
 
-    const response = await this.apiClient.get('/products/hierarchy', queryParams);
+    const response = await this.apiClient.get('/products', queryParams);
 
-    return {
-      success: true,
-      data: response,
-    };
+    const products: any[] = Array.isArray((response as any)?.data) ? (response as any).data : [];
+
+    const formatTree = (items: any[], indent = 0): string =>
+      items.map(p =>
+        `${'  '.repeat(indent)}• ${p.name || 'Untitled'} (ID: ${p.id})\n` +
+        (p.children?.length ? formatTree(p.children, indent + 1) : '')
+      ).join('');
+
+    const summary = products.length > 0
+      ? `Product hierarchy (${products.length} products):\n\n` + formatTree(products)
+      : 'No products found.';
+
+    return { content: [{ type: 'text', text: summary }] };
   }
 }

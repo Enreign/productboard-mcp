@@ -3,18 +3,29 @@ import { ListObjectivesTool } from '@tools/objectives/list-objectives';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
-/** Parse the MCP content wrapper to get the underlying result */
-function parseResult(result: any): any {
-  if (result?.content?.[0]?.text) {
-    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
-  }
-  return result;
-}
-
 describe('ListObjectivesTool', () => {
   let tool: ListObjectivesTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
   let mockLogger: jest.Mocked<Logger>;
+
+  const mockObjectives = [
+    {
+      id: 'obj_123',
+      name: 'Increase User Engagement',
+      description: 'Improve user engagement metrics',
+      status: 'active',
+      period: 'quarter',
+      created_at: '2024-01-15T10:00:00Z',
+    },
+    {
+      id: 'obj_456',
+      name: 'Reduce Churn Rate',
+      description: 'Decrease monthly churn rate',
+      status: 'active',
+      period: 'quarter',
+      created_at: '2024-01-10T10:00:00Z',
+    },
+  ];
 
   beforeEach(() => {
     mockClient = {
@@ -25,14 +36,14 @@ describe('ListObjectivesTool', () => {
       patch: jest.fn(),
       makeRequest: jest.fn(),
     } as unknown as jest.Mocked<ProductboardAPIClient>;
-    
+
     mockLogger = {
       info: jest.fn(),
       debug: jest.fn(),
       error: jest.fn(),
       warn: jest.fn(),
     } as any;
-    
+
     tool = new ListObjectivesTool(mockClient, mockLogger);
   });
 
@@ -110,7 +121,7 @@ describe('ListObjectivesTool', () => {
     it('should validate limit range', async () => {
       const inputTooLow = { limit: 0 } as any;
       await expect(tool.execute(inputTooLow)).rejects.toThrow('Invalid parameters');
-      
+
       const inputTooHigh = { limit: 101 } as any;
       await expect(tool.execute(inputTooHigh)).rejects.toThrow('Invalid parameters');
     });
@@ -135,43 +146,19 @@ describe('ListObjectivesTool', () => {
 
   describe('execute', () => {
     it('should list objectives with no filters', async () => {
-      const expectedResponse = {
-        objectives: [
-          {
-            id: 'obj_123',
-            name: 'Increase User Engagement',
-            description: 'Improve user engagement metrics',
-            status: 'active',
-            period: 'quarter',
-            created_at: '2024-01-15T10:00:00Z',
-          },
-          {
-            id: 'obj_456',
-            name: 'Reduce Churn Rate',
-            description: 'Decrease monthly churn rate',
-            status: 'active',
-            period: 'quarter',
-            created_at: '2024-01-10T10:00:00Z',
-          },
-        ],
-        total: 2,
-        limit: 20,
-        offset: 0,
-      };
-      
-      mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
+      mockClient.makeRequest.mockResolvedValueOnce({ data: mockObjectives });
 
-      const result = parseResult(await tool.execute({}));
+      const result = await tool.execute({});
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/objectives',
         params: {},
       });
-      expect(result).toEqual({
-        success: true,
-        data: expectedResponse,
-      });
+
+      expect(result.content[0].type).toBe('text');
+      expect(result.content[0].text).toContain('Increase User Engagement');
+      expect(result.content[0].text).toContain('Reduce Churn Rate');
     });
 
     it('should list objectives with filters', async () => {
@@ -180,29 +167,14 @@ describe('ListObjectivesTool', () => {
         owner_email: 'jane.doe@example.com',
         period: 'quarter' as const,
         limit: 10,
-        offset: 5,
+        offset: 0,
       };
-      const expectedResponse = {
-        objectives: [
-          {
-            id: 'obj_123',
-            name: 'Increase User Engagement',
-            description: 'Improve user engagement metrics',
-            status: 'active',
-            period: 'quarter',
-            owner_email: 'jane.doe@example.com',
-            created_at: '2024-01-15T10:00:00Z',
-          },
-        ],
-        total: 1,
-        limit: 10,
-        offset: 5,
-      };
-      
-      mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = parseResult(await tool.execute(input));
+      mockClient.makeRequest.mockResolvedValueOnce({ data: [mockObjectives[0]] });
 
+      const result = await tool.execute(input);
+
+      // limit and offset are NOT sent to the API (client-side only)
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/objectives',
@@ -210,14 +182,10 @@ describe('ListObjectivesTool', () => {
           status: 'active',
           owner_email: 'jane.doe@example.com',
           period: 'quarter',
-          limit: 10,
-          offset: 5,
         },
       });
-      expect(result).toEqual({
-        success: true,
-        data: expectedResponse,
-      });
+
+      expect(result.content[0].text).toContain('Increase User Engagement');
     });
 
     it('should handle partial filters', async () => {
@@ -225,29 +193,20 @@ describe('ListObjectivesTool', () => {
         status: 'completed' as const,
         limit: 5,
       };
-      const expectedResponse = {
-        objectives: [],
-        total: 0,
-        limit: 5,
-        offset: 0,
-      };
-      
-      mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = parseResult(await tool.execute(input));
+      mockClient.makeRequest.mockResolvedValueOnce({ data: [] });
+
+      const result = await tool.execute(input);
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/objectives',
         params: {
           status: 'completed',
-          limit: 5,
         },
       });
-      expect(result).toEqual({
-        success: true,
-        data: expectedResponse,
-      });
+
+      expect(result.content[0].text).toBe('No objectives found.');
     });
 
     it('should handle API errors gracefully', async () => {
@@ -297,7 +256,7 @@ describe('ListObjectivesTool', () => {
   describe('response transformation', () => {
     it('should transform API response correctly', async () => {
       const apiResponse = {
-        objectives: [
+        data: [
           {
             id: 'obj_123',
             name: 'Test Objective',
@@ -307,41 +266,23 @@ describe('ListObjectivesTool', () => {
             updated_at: '2024-01-01T00:00:00Z',
           },
         ],
-        total: 1,
-        limit: 20,
-        offset: 0,
       };
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = parseResult(await tool.execute({}));
+      const result = await tool.execute({});
 
-      expect(result).toEqual({
-        success: true,
-        data: apiResponse,
-      });
-      expect((result as any).data).toHaveProperty('objectives');
-      expect((result as any).data).toHaveProperty('total', 1);
-      expect((result as any).data.objectives[0]).toHaveProperty('id', 'obj_123');
+      expect(result.content[0].type).toBe('text');
+      expect(result.content[0].text).toContain('Test Objective');
+      expect(result.content[0].text).toContain('Found 1 objectives');
     });
 
     it('should handle empty results', async () => {
-      const apiResponse = {
-        objectives: [],
-        total: 0,
-        limit: 20,
-        offset: 0,
-      };
+      mockClient.makeRequest.mockResolvedValueOnce({ data: [] });
 
-      mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
+      const result = await tool.execute({});
 
-      const result = parseResult(await tool.execute({}));
-
-      expect(result).toEqual({
-        success: true,
-        data: apiResponse,
-      });
-      expect((result as any).data.objectives).toHaveLength(0);
+      expect(result.content[0].text).toBe('No objectives found.');
     });
   });
 });

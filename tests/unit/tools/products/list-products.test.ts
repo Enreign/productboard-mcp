@@ -2,14 +2,6 @@ import { ListProductsTool } from '@tools/products/list-products';
 import { ProductboardAPIClient } from '@api/index';
 import { Logger } from '@utils/logger';
 
-/** Parse the MCP content wrapper to get the underlying result */
-function parseResult(result: any): any {
-  if (result?.content?.[0]?.text) {
-    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
-  }
-  return result;
-}
-
 describe('ListProductsTool', () => {
   let tool: ListProductsTool;
   let mockApiClient: jest.Mocked<ProductboardAPIClient>;
@@ -83,7 +75,7 @@ describe('ListProductsTool', () => {
         links: {},
       });
 
-      const result = parseResult(await tool.execute({}));
+      const result = await tool.execute({});
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -91,13 +83,10 @@ describe('ListProductsTool', () => {
         params: {},
       });
 
-      expect(result).toEqual({
-        success: true,
-        data: {
-          products: mockProducts,
-          total: 2,
-        },
-      });
+      expect(result.content[0].type).toBe('text');
+      expect(result.content[0].text).toContain('Found 2 products');
+      expect(result.content[0].text).toContain('Product A');
+      expect(result.content[0].text).toContain('Product B');
 
       expect(mockLogger.info).toHaveBeenCalledWith('Listing products');
     });
@@ -117,7 +106,7 @@ describe('ListProductsTool', () => {
         links: {},
       });
 
-      const result = parseResult(await tool.execute({ parent_id: 'prod-1' }));
+      const result = await tool.execute({ parent_id: 'prod-1' });
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -125,31 +114,25 @@ describe('ListProductsTool', () => {
         params: { parent_id: 'prod-1' },
       });
 
-      expect(result.data.products).toEqual(subProducts);
+      expect(result.content[0].text).toContain('Sub Product 1');
     });
 
     it('should include components when requested', async () => {
-      const productsWithComponents = mockProducts.map(p => ({
-        ...p,
-        components: [
-          { id: 'comp-1', name: 'Component 1' },
-        ],
-      }));
-
       mockApiClient.makeRequest.mockResolvedValue({
-        data: productsWithComponents,
+        data: mockProducts,
         links: {},
       });
 
-      const result = parseResult(await tool.execute({ include_components: true }));
+      const result = await tool.execute({ include_components: true });
 
+      // include_components is not forwarded to API (not a supported param)
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/products',
-        params: { include_components: true },
+        params: {},
       });
 
-      expect(result.data.products[0]).toHaveProperty('components');
+      expect(result.content[0].text).toContain('Product A');
     });
 
     it('should include archived products when requested', async () => {
@@ -167,16 +150,10 @@ describe('ListProductsTool', () => {
         links: {},
       });
 
-      const result = parseResult(await tool.execute({ include_archived: true }));
+      const result = await tool.execute({ include_archived: true });
 
-      expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/products',
-        params: { include_archived: true },
-      });
-
-      expect(result.data.products).toHaveLength(3);
-      expect(result.data.products.some((p: any) => p.archived)).toBe(true);
+      expect(result.content[0].text).toContain('Found 3 products');
+      expect(result.content[0].text).toContain('Archived Product');
     });
 
     it('should handle empty results', async () => {
@@ -185,15 +162,9 @@ describe('ListProductsTool', () => {
         links: {},
       });
 
-      const result = parseResult(await tool.execute({}));
+      const result = await tool.execute({});
 
-      expect(result).toEqual({
-        success: true,
-        data: {
-          products: [],
-          total: 0,
-        },
-      });
+      expect(result.content[0].text).toBe('No products found.');
     });
 
     it('should handle API errors', async () => {

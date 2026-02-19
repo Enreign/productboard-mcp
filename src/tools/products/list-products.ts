@@ -47,8 +47,6 @@ export class ListProductsTool extends BaseTool<ListProductsParams> {
 
     const queryParams: Record<string, any> = {};
     if (params.parent_id) queryParams.parent_id = params.parent_id;
-    if (params.include_components) queryParams.include_components = params.include_components;
-    if (params.include_archived) queryParams.include_archived = params.include_archived;
 
     const response = await this.apiClient.makeRequest({
       method: 'GET',
@@ -56,12 +54,18 @@ export class ListProductsTool extends BaseTool<ListProductsParams> {
       params: queryParams,
     });
 
-    return {
-      success: true,
-      data: {
-        products: Array.isArray((response as any).data) ? (response as any).data : [],
-        total: Array.isArray((response as any).data) ? (response as any).data.length : 0,
-      },
-    };
+    const products: any[] = Array.isArray((response as any).data) ? (response as any).data : [];
+
+    const formatted = products.map((p: any, i: number) =>
+      `${i + 1}. ${p.name || 'Untitled Product'}\n` +
+      `   ID: ${p.id}\n` +
+      (p.description ? `   Description: ${p.description.substring(0, 120)}\n` : '')
+    );
+
+    const summary = products.length > 0
+      ? `Found ${products.length} products:\n\n` + formatted.join('\n')
+      : 'No products found.';
+
+    return { content: [{ type: 'text', text: summary }] };
   }
 }

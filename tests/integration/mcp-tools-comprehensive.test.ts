@@ -294,11 +294,12 @@ describe('MCP Tools Comprehensive Integration', () => {
         })
         .reply(201, childProduct);
 
+      // product-hierarchy now calls /products (not /products/hierarchy)
       nock(BASE_URL)
-        .get('/products/hierarchy')
-        .query({ depth: 3 })
+        .get('/products')
+        .query({})
         .reply(200, {
-          products: [{
+          data: [{
             ...parentProduct,
             children: [childProduct],
           }],
@@ -319,10 +320,8 @@ describe('MCP Tools Comprehensive Integration', () => {
       expect(childResult).toMatchObject({ success: true });
 
       const hierarchyTool = registry.getTool('pb_product_hierarchy')!;
-      const hierarchyResult = parseResult(await hierarchyTool.execute({
-        depth: 3,
-      }));
-      expect(hierarchyResult).toMatchObject({ success: true });
+      const hierarchyResult = await hierarchyTool.execute({ depth: 3 });
+      expect(hierarchyResult.content[0].text).toContain('Parent Product');
     });
   });
 
@@ -356,7 +355,7 @@ describe('MCP Tools Comprehensive Integration', () => {
 
       nock(BASE_URL)
         .get('/notes')
-        .query({ feature_id: 'feature-123', limit: 20 })
+        .query({ feature_id: 'feature-123' })
         .reply(200, {
           data: [noteData],
           pagination: { hasMore: false }

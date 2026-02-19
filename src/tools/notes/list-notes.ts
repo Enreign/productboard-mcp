@@ -70,10 +70,9 @@ export class ListNotesTool extends BaseTool<ListNotesParams> {
   protected async executeInternal(params: ListNotesParams = {}): Promise<unknown> {
     this.logger.info('Listing notes');
 
-    const queryParams: Record<string, any> = {
-      limit: params.limit || 20,
-    };
-    
+    // Only include filters supported by the Productboard API
+    const queryParams: Record<string, any> = {};
+
     if (params.feature_id) queryParams.feature_id = params.feature_id;
     if (params.customer_email) queryParams.customer_email = params.customer_email;
     if (params.company_name) queryParams.company_name = params.company_name;
@@ -87,8 +86,10 @@ export class ListNotesTool extends BaseTool<ListNotesParams> {
       params: queryParams,
     });
 
-    const notes = extractResponseData(response);
-    
+    const allNotes = extractResponseData(response);
+    const limit = params.limit || 20;
+    const notes = allNotes.slice(0, limit);
+
     // Format response for MCP protocol
     const formattedNotes = notes.map((note: any) => ({
       id: note.id,
@@ -102,7 +103,7 @@ export class ListNotesTool extends BaseTool<ListNotesParams> {
     
     // Create a text summary of the notes
     const summary = formattedNotes.length > 0
-      ? `Found ${formattedNotes.length} notes:\n\n` +
+      ? `Found ${allNotes.length} notes total, showing ${formattedNotes.length}:\n\n` +
         formattedNotes.map((n, i) => 
           `${i + 1}. ${n.title}\n` +
           `   Customer: ${n.customer}\n` +

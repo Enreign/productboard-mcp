@@ -113,33 +113,50 @@ export class SearchNotesTool extends BaseTool<SearchNotesParams> {
   protected async executeInternal(params: SearchNotesParams): Promise<unknown> {
     this.logger.info('Searching notes', { query: params.query });
 
-    const queryParams: Record<string, any> = {
-      q: params.query,
-      sort: params.sort || 'relevance',
-      order: params.order || 'desc',
-      limit: params.limit || 20,
-      offset: params.offset || 0,
-    };
+    // Only pass filters supported by the /notes API endpoint
+    const queryParams: Record<string, any> = {};
 
     if (params.filters) {
-      if (params.filters.customer_emails?.length) queryParams.customer_emails = params.filters.customer_emails.join(',');
-      if (params.filters.company_names?.length) queryParams.company_names = params.filters.company_names.join(',');
-      if (params.filters.tags?.length) queryParams.tags = params.filters.tags.join(',');
-      if (params.filters.source?.length) queryParams.source = params.filters.source.join(',');
-      if (params.filters.created_after) queryParams.created_after = params.filters.created_after;
-      if (params.filters.created_before) queryParams.created_before = params.filters.created_before;
-      if (params.filters.feature_ids?.length) queryParams.feature_ids = params.filters.feature_ids.join(',');
+      if (params.filters.customer_emails?.length) queryParams.customer_email = params.filters.customer_emails[0];
+      if (params.filters.company_names?.length) queryParams.company_name = params.filters.company_names[0];
+      if (params.filters.tags?.length) queryParams.tags = params.filters.tags;
+      if (params.filters.feature_ids?.length) queryParams.feature_id = params.filters.feature_ids[0];
+      if (params.filters.created_after) queryParams.date_from = params.filters.created_after;
+      if (params.filters.created_before) queryParams.date_to = params.filters.created_before;
     }
 
     const response = await this.apiClient.makeRequest({
       method: 'GET',
-      endpoint: '/search/notes',
+      endpoint: '/notes',
       params: queryParams,
     });
 
-    return {
-      success: true,
-      data: response,
-    };
+    // Filter client-side by query text
+    let notes: any[] = Array.isArray((response as any)?.data) ? (response as any).data : [];
+    if (params.query && params.query !== '*') {
+      const query = params.query.toLowerCase();
+      notes = notes.filter((n: any) =>
+        n.title?.toLowerCase().includes(query) ||
+        n.content?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply client-side pagination
+    const limit = params.limit || 20;
+    const offset = params.offset || 0;
+    const paginated = notes.slice(offset, offset + limit);
+
+    const formatted = paginated.map((n: any, i: number) =>
+      `${offset + i + 1}. ${n.title || n.content?.substring(0, 50) || 'Untitled Note'}\n` +
+      `   Customer: ${n.customer?.email || 'Unknown'}\n` +
+      `   Company: ${n.company?.name || 'Unknown'}\n` +
+      `   Content: ${(n.content || '').substring(0, 100)}${(n.content || '').length > 100 ? '...' : ''}`
+    );
+
+    const summary = paginated.length > 0
+      ? `Found ${notes.length} notes matching "${params.query}", showing ${paginated.length}:\n\n` + formatted.join('\n\n')
+      : `No notes found matching "${params.query}".`;
+
+    return { content: [{ type: 'text', text: summary }] };
   }
 }

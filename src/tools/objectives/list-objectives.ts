@@ -62,12 +62,11 @@ export class ListObjectivesTool extends BaseTool<ListObjectivesParams> {
   protected async executeInternal(params: ListObjectivesParams = {}): Promise<unknown> {
     this.logger.info('Listing objectives');
 
+    // Only pass filters supported by the API, not pagination params
     const queryParams: Record<string, any> = {};
     if (params.status) queryParams.status = params.status;
     if (params.owner_email) queryParams.owner_email = params.owner_email;
     if (params.period) queryParams.period = params.period;
-    if (params.limit) queryParams.limit = params.limit;
-    if (params.offset) queryParams.offset = params.offset;
 
     const response = await this.apiClient.makeRequest({
       method: 'GET',
@@ -75,9 +74,22 @@ export class ListObjectivesTool extends BaseTool<ListObjectivesParams> {
       params: queryParams,
     });
 
-    return {
-      success: true,
-      data: response,
-    };
+    const allObjectives: any[] = Array.isArray((response as any)?.data) ? (response as any).data : [];
+    const limit = params.limit || 20;
+    const offset = params.offset || 0;
+    const objectives = allObjectives.slice(offset, offset + limit);
+
+    const formatted = objectives.map((obj: any, i: number) =>
+      `${offset + i + 1}. ${obj.name || 'Untitled Objective'}\n` +
+      `   Status: ${obj.status || 'Unknown'}\n` +
+      `   Owner: ${obj.owner?.email || 'Unassigned'}\n` +
+      (obj.description ? `   Description: ${obj.description.substring(0, 120)}\n` : '')
+    );
+
+    const summary = objectives.length > 0
+      ? `Found ${allObjectives.length} objectives, showing ${objectives.length}:\n\n` + formatted.join('\n')
+      : 'No objectives found.';
+
+    return { content: [{ type: 'text', text: summary }] };
   }
 }
