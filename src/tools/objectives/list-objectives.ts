@@ -79,11 +79,13 @@ export class ListObjectivesTool extends BaseTool<ListObjectivesParams> {
     const offset = params.offset || 0;
     const objectives = allObjectives.slice(offset, offset + limit);
 
+    const stripHtml = (s: string) => s.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+
     const formatted = objectives.map((obj: any, i: number) =>
       `${offset + i + 1}. ${obj.name || 'Untitled Objective'}\n` +
-      `   Status: ${obj.status || 'Unknown'}\n` +
+      `   Status: ${obj.status?.name || (typeof obj.status === 'string' ? obj.status : 'Unknown')}\n` +
       `   Owner: ${obj.owner?.email || 'Unassigned'}\n` +
-      (obj.description ? `   Description: ${obj.description.substring(0, 120)}\n` : '')
+      (obj.description ? `   Description: ${stripHtml(obj.description).substring(0, 120)}\n` : '')
     );
 
     const summary = objectives.length > 0

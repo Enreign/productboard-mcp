@@ -56,12 +56,20 @@ export class ListUsersTool extends BaseTool<ListUsersParams> {
       params: queryParams,
     });
 
-    return {
-      success: true,
-      data: {
-        users: response,
-        total: Array.isArray(response) ? response.length : 0,
-      },
-    };
+    const users: any[] = Array.isArray((response as any)?.data)
+      ? (response as any).data
+      : (Array.isArray(response) ? response : []);
+
+    const formatted = users.map((u: any, i: number) =>
+      `${i + 1}. ${u.name || u.email || 'Unknown User'}\n` +
+      `   Email: ${u.email || 'Unknown'}\n` +
+      `   Role: ${u.role || 'Unknown'}`
+    );
+
+    const summary = users.length > 0
+      ? `Found ${users.length} users:\n\n` + formatted.join('\n\n')
+      : 'No users found.';
+
+    return { content: [{ type: 'text', text: summary }] };
   }
 }

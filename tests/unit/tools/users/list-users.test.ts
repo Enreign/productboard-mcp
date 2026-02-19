@@ -2,18 +2,27 @@ import { ListUsersTool } from '@tools/users/list-users';
 import { ProductboardAPIClient } from '@api/index';
 import { Logger } from '@utils/logger';
 
-/** Parse the MCP content wrapper to get the underlying result */
-function parseResult(result: any): any {
-  if (result?.content?.[0]?.text) {
-    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
-  }
-  return result;
-}
-
 describe('ListUsersTool', () => {
   let tool: ListUsersTool;
   let mockApiClient: jest.Mocked<ProductboardAPIClient>;
   let mockLogger: jest.Mocked<Logger>;
+
+  const mockUsers = [
+    {
+      id: 'user-1',
+      email: 'admin@example.com',
+      name: 'Admin User',
+      role: 'admin',
+      active: true,
+    },
+    {
+      id: 'user-2',
+      email: 'contributor@example.com',
+      name: 'Contributor User',
+      role: 'contributor',
+      active: true,
+    },
+  ];
 
   beforeEach(() => {
     mockApiClient = {
@@ -67,27 +76,10 @@ describe('ListUsersTool', () => {
   });
 
   describe('execute', () => {
-    const mockUsers = [
-      {
-        id: 'user-1',
-        email: 'admin@example.com',
-        name: 'Admin User',
-        role: 'admin',
-        active: true,
-      },
-      {
-        id: 'user-2',
-        email: 'contributor@example.com',
-        name: 'Contributor User',
-        role: 'contributor',
-        active: true,
-      },
-    ];
-
     it('should list all users with default parameters', async () => {
-      mockApiClient.makeRequest.mockResolvedValue(mockUsers);
+      mockApiClient.makeRequest.mockResolvedValue({ data: mockUsers });
 
-      const result = parseResult(await tool.execute({}));
+      const result = await tool.execute({});
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -95,23 +87,18 @@ describe('ListUsersTool', () => {
         params: {},
       });
 
-      expect(result).toEqual({
-        success: true,
-        data: {
-          users: mockUsers,
-          total: 2,
-        },
-      });
+      expect(result.content[0].type).toBe('text');
+      expect(result.content[0].text).toContain('Admin User');
+      expect(result.content[0].text).toContain('Contributor User');
+      expect(result.content[0].text).toContain('Found 2 users');
 
       expect(mockLogger.info).toHaveBeenCalledWith('Listing users');
     });
 
     it('should filter by role', async () => {
-      const adminUsers = [mockUsers[0]];
+      mockApiClient.makeRequest.mockResolvedValue({ data: [mockUsers[0]] });
 
-      mockApiClient.makeRequest.mockResolvedValue(adminUsers);
-
-      const result = parseResult(await tool.execute({ role: 'admin' }));
+      const result = await tool.execute({ role: 'admin' });
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -119,14 +106,11 @@ describe('ListUsersTool', () => {
         params: { role: 'admin' },
       });
 
-      expect(result.data.users).toHaveLength(1);
-      expect(result.data.users[0].role).toBe('admin');
+      expect(result.content[0].text).toContain('admin@example.com');
     });
 
     it('should filter by active status', async () => {
-      const activeUsers = mockUsers;
-
-      mockApiClient.makeRequest.mockResolvedValue(activeUsers);
+      mockApiClient.makeRequest.mockResolvedValue({ data: mockUsers });
 
       await tool.execute({ active: true });
 
@@ -138,11 +122,9 @@ describe('ListUsersTool', () => {
     });
 
     it('should search users by name or email', async () => {
-      const searchResults = [mockUsers[0]];
+      mockApiClient.makeRequest.mockResolvedValue({ data: [mockUsers[0]] });
 
-      mockApiClient.makeRequest.mockResolvedValue(searchResults);
-
-      const result = parseResult(await tool.execute({ search: 'admin' }));
+      const result = await tool.execute({ search: 'admin' });
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -150,11 +132,11 @@ describe('ListUsersTool', () => {
         params: { search: 'admin' },
       });
 
-      expect(result.data.users).toHaveLength(1);
+      expect(result.content[0].text).toContain('admin@example.com');
     });
 
     it('should combine multiple filters', async () => {
-      mockApiClient.makeRequest.mockResolvedValue([mockUsers[1]]);
+      mockApiClient.makeRequest.mockResolvedValue({ data: [mockUsers[1]] });
 
       await tool.execute({
         role: 'contributor',
@@ -180,17 +162,11 @@ describe('ListUsersTool', () => {
     });
 
     it('should handle empty results', async () => {
-      mockApiClient.makeRequest.mockResolvedValue([]);
+      mockApiClient.makeRequest.mockResolvedValue({ data: [] });
 
-      const result = parseResult(await tool.execute({ role: 'viewer' }));
+      const result = await tool.execute({ role: 'viewer' });
 
-      expect(result).toEqual({
-        success: true,
-        data: {
-          users: [],
-          total: 0,
-        },
-      });
+      expect(result.content[0].text).toBe('No users found.');
     });
 
     it('should handle API errors', async () => {
@@ -204,7 +180,7 @@ describe('ListUsersTool', () => {
         new Error('Insufficient permissions to list users')
       );
 
-      await expect(tool.execute({})).rejects.toThrow('Tool pb_user_list execution failed: Insufficient permissions to list users');
+      await expect(tool.execute({})).rejects.toThrow('Insufficient permissions to list users');
     });
   });
 });

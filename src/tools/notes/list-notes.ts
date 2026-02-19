@@ -90,25 +90,29 @@ export class ListNotesTool extends BaseTool<ListNotesParams> {
     const limit = params.limit || 20;
     const notes = allNotes.slice(0, limit);
 
+    const stripHtml = (s: string) => s
+      .replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+
     // Format response for MCP protocol
     const formattedNotes = notes.map((note: any) => ({
       id: note.id,
-      title: note.title || note.content?.substring(0, 50) || 'Untitled Note',
-      content: note.content || '',
-      customer: note.customer?.email || 'Unknown',
+      title: note.title || (note.content ? stripHtml(note.content).substring(0, 60) : 'Untitled Note'),
+      content: note.content ? stripHtml(note.content) : '',
+      customer: note.customer?.email || note.author?.email || 'Unknown',
       company: note.company?.name || 'Unknown',
       createdAt: note.created_at || note.createdAt,
       tags: note.tags || [],
     }));
-    
+
     // Create a text summary of the notes
     const summary = formattedNotes.length > 0
       ? `Found ${allNotes.length} notes total, showing ${formattedNotes.length}:\n\n` +
-        formattedNotes.map((n, i) => 
+        formattedNotes.map((n, i) =>
           `${i + 1}. ${n.title}\n` +
           `   Customer: ${n.customer}\n` +
           `   Company: ${n.company}\n` +
-          `   Content: ${n.content.substring(0, 100)}${n.content.length > 100 ? '...' : ''}\n` +
+          `   Content: ${n.content.substring(0, 150)}${n.content.length > 150 ? '...' : ''}\n` +
           `   Tags: ${n.tags.length > 0 ? n.tags.join(', ') : 'None'}\n`
         ).join('\n')
       : 'No notes found.';

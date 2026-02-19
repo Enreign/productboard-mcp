@@ -56,10 +56,12 @@ export class ListProductsTool extends BaseTool<ListProductsParams> {
 
     const products: any[] = Array.isArray((response as any).data) ? (response as any).data : [];
 
+    const stripHtml = (s: string) => s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
     const formatted = products.map((p: any, i: number) =>
       `${i + 1}. ${p.name || 'Untitled Product'}\n` +
       `   ID: ${p.id}\n` +
-      (p.description ? `   Description: ${p.description.substring(0, 120)}\n` : '')
+      (p.description ? `   Description: ${stripHtml(p.description).substring(0, 120)}\n` : '')
     );
 
     const summary = products.length > 0

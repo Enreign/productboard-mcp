@@ -3,18 +3,27 @@ import { ListReleasesTool } from '@tools/releases/list-releases';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
-/** Parse the MCP content wrapper to get the underlying result */
-function parseResult(result: any): any {
-  if (result?.content?.[0]?.text) {
-    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
-  }
-  return result;
-}
-
 describe('ListReleasesTool', () => {
   let tool: ListReleasesTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
   let mockLogger: jest.Mocked<Logger>;
+
+  const mockReleases = [
+    {
+      id: 'rel_123',
+      name: 'v1.0.0',
+      status: 'planned',
+      release_date: '2024-01-15',
+      created_at: '2024-01-01T00:00:00Z',
+    },
+    {
+      id: 'rel_456',
+      name: 'v2.0.0',
+      status: 'in_progress',
+      release_date: '2024-06-15',
+      created_at: '2024-03-01T00:00:00Z',
+    },
+  ];
 
   beforeEach(() => {
     mockClient = {
@@ -25,14 +34,14 @@ describe('ListReleasesTool', () => {
       patch: jest.fn(),
       makeRequest: jest.fn(),
     } as unknown as jest.Mocked<ProductboardAPIClient>;
-    
+
     mockLogger = {
       info: jest.fn(),
       debug: jest.fn(),
       error: jest.fn(),
       warn: jest.fn(),
     } as any;
-    
+
     tool = new ListReleasesTool(mockClient, mockLogger);
   });
 
@@ -126,41 +135,20 @@ describe('ListReleasesTool', () => {
 
   describe('execute', () => {
     it('should list releases without filters', async () => {
-      const expectedResponse = {
-        releases: [
-          {
-            id: 'rel_123',
-            name: 'v1.0.0',
-            status: 'planned',
-            date: '2024-01-15',
-            created_at: '2024-01-01T00:00:00Z',
-          },
-          {
-            id: 'rel_456',
-            name: 'v2.0.0',
-            status: 'in_progress',
-            date: '2024-06-15',
-            created_at: '2024-03-01T00:00:00Z',
-          },
-        ],
-        total: 2,
-        limit: 20,
-        offset: 0,
-      };
-      
-      mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
+      mockClient.makeRequest.mockResolvedValueOnce({ data: mockReleases });
 
-      const result = parseResult(await tool.execute({}));
+      const result = await tool.execute({});
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/releases',
         params: {},
       });
-      expect(result).toEqual({
-        success: true,
-        data: expectedResponse,
-      });
+
+      expect(result.content[0].type).toBe('text');
+      expect(result.content[0].text).toContain('v1.0.0');
+      expect(result.content[0].text).toContain('v2.0.0');
+      expect(result.content[0].text).toContain('Found 2 releases');
     });
 
     it('should list releases with all filters', async () => {
@@ -170,28 +158,14 @@ describe('ListReleasesTool', () => {
         date_from: '2024-01-01',
         date_to: '2024-12-31',
         limit: 50,
-        offset: 10,
+        offset: 0,
       };
-      const expectedResponse = {
-        releases: [
-          {
-            id: 'rel_789',
-            name: 'v1.5.0',
-            status: 'in_progress',
-            date: '2024-03-15',
-            release_group_id: 'group_123',
-            created_at: '2024-02-01T00:00:00Z',
-          },
-        ],
-        total: 1,
-        limit: 50,
-        offset: 10,
-      };
-      
-      mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = parseResult(await tool.execute(input));
+      mockClient.makeRequest.mockResolvedValueOnce({ data: [mockReleases[1]] });
 
+      const result = await tool.execute(input);
+
+      // limit and offset are NOT sent to the API (client-side only)
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/releases',
@@ -200,14 +174,10 @@ describe('ListReleasesTool', () => {
           status: 'in_progress',
           date_from: '2024-01-01',
           date_to: '2024-12-31',
-          limit: 50,
-          offset: 10,
         },
       });
-      expect(result).toEqual({
-        success: true,
-        data: expectedResponse,
-      });
+
+      expect(result.content[0].text).toContain('v2.0.0');
     });
 
     it('should handle partial filters', async () => {
@@ -215,29 +185,18 @@ describe('ListReleasesTool', () => {
         status: 'released' as const,
         limit: 10,
       };
-      const expectedResponse = {
-        releases: [],
-        total: 0,
-        limit: 10,
-        offset: 0,
-      };
-      
-      mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = parseResult(await tool.execute(input));
+      mockClient.makeRequest.mockResolvedValueOnce({ data: [] });
+
+      const result = await tool.execute(input);
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/releases',
-        params: {
-          status: 'released',
-          limit: 10,
-        },
+        params: { status: 'released' },
       });
-      expect(result).toEqual({
-        success: true,
-        data: expectedResponse,
-      });
+
+      expect(result.content[0].text).toBe('No releases found.');
     });
 
     it('should handle API errors gracefully', async () => {
@@ -271,31 +230,13 @@ describe('ListReleasesTool', () => {
 
   describe('response transformation', () => {
     it('should transform API response correctly', async () => {
-      const apiResponse = {
-        releases: [
-          {
-            id: 'rel_123',
-            name: 'v1.0.0',
-            status: 'planned',
-            date: '2024-01-15',
-          },
-        ],
-        total: 1,
-        limit: 20,
-        offset: 0,
-      };
+      mockClient.makeRequest.mockResolvedValueOnce({ data: mockReleases });
 
-      mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
+      const result = await tool.execute({});
 
-      const result = parseResult(await tool.execute({}));
-
-      expect(result).toEqual({
-        success: true,
-        data: apiResponse,
-      });
-      expect(result.data).toHaveProperty('releases');
-      expect(result.data).toHaveProperty('total', 1);
-      expect(result.data.releases[0]).toHaveProperty('id', 'rel_123');
+      expect(result.content[0].type).toBe('text');
+      expect(result.content[0].text).toContain('v1.0.0');
+      expect(result.content[0].text).toContain('Found 2 releases');
     });
   });
 });

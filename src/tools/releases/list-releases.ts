@@ -67,13 +67,12 @@ export class ListReleasesTool extends BaseTool<ListReleasesParams> {
   protected async executeInternal(params: ListReleasesParams = {}): Promise<unknown> {
     this.logger.info('Listing releases');
 
+    // Only pass filters supported by the API - not limit/offset
     const queryParams: Record<string, any> = {};
     if (params.release_group_id) queryParams.release_group_id = params.release_group_id;
     if (params.status) queryParams.status = params.status;
     if (params.date_from) queryParams.date_from = params.date_from;
     if (params.date_to) queryParams.date_to = params.date_to;
-    if (params.limit) queryParams.limit = params.limit;
-    if (params.offset) queryParams.offset = params.offset;
 
     const response = await this.apiClient.makeRequest({
       method: 'GET',
@@ -81,9 +80,22 @@ export class ListReleasesTool extends BaseTool<ListReleasesParams> {
       params: queryParams,
     });
 
-    return {
-      success: true,
-      data: response,
-    };
+    const allReleases: any[] = Array.isArray((response as any)?.data) ? (response as any).data : [];
+    const limit = params.limit || 20;
+    const offset = params.offset || 0;
+    const releases = allReleases.slice(offset, offset + limit);
+
+    const formatted = releases.map((r: any, i: number) =>
+      `${offset + i + 1}. ${r.name || 'Untitled Release'}\n` +
+      `   Status: ${r.state?.name || r.status?.name || r.status || 'Unknown'}\n` +
+      (r.release_date ? `   Date: ${r.release_date}\n` : '') +
+      (r.description ? `   Description: ${r.description.substring(0, 100)}\n` : '')
+    );
+
+    const summary = releases.length > 0
+      ? `Found ${allReleases.length} releases, showing ${releases.length}:\n\n` + formatted.join('\n')
+      : 'No releases found.';
+
+    return { content: [{ type: 'text', text: summary }] };
   }
 }

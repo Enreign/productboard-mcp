@@ -22,7 +22,13 @@ export class PermissionDiscoveryService {
   }
 
   async discoverUserPermissions(): Promise<UserPermissions> {
-    // Temporary fix: return read-only permissions without API testing
+    // Decode permissions from JWT token rather than making risky write API calls
+    const tokenRole = this.extractRoleFromToken();
+    if (tokenRole) {
+      this.logger.info(`Discovered role from token: ${tokenRole}`);
+      return this.createPermissionsFromRole(tokenRole);
+    }
+
     this.logger.info("Skipping permission discovery - assuming read-only access");
     return this.createReadOnlyUserPermissions();
     this.logger.info('Starting permission discovery...');
@@ -363,6 +369,81 @@ export class PermissionDiscoveryService {
       isAdmin,
       permissions,
       capabilities,
+    };
+  }
+
+  private extractRoleFromToken(): string | null {
+    try {
+      const config = this.apiClient.getConfig();
+      const token = (config as any).token || process.env.PRODUCTBOARD_API_TOKEN;
+      if (!token || typeof token !== 'string') return null;
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'));
+      return payload.role || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private createPermissionsFromRole(role: string): UserPermissions {
+    const isAdmin = role === 'admin';
+    const canWrite = isAdmin || role === 'contributor' || role === 'editor';
+    const canDelete = isAdmin;
+
+    const permissions = new Set<Permission>();
+
+    // All roles get read access
+    permissions.add(Permission.USERS_READ);
+    permissions.add(Permission.FEATURES_READ);
+    permissions.add(Permission.PRODUCTS_READ);
+    permissions.add(Permission.NOTES_READ);
+    permissions.add(Permission.COMPANIES_READ);
+    permissions.add(Permission.OBJECTIVES_READ);
+    permissions.add(Permission.RELEASES_READ);
+    permissions.add(Permission.CUSTOM_FIELDS_READ);
+    permissions.add(Permission.WEBHOOKS_READ);
+    permissions.add(Permission.SEARCH);
+    permissions.add(Permission.INTEGRATIONS_READ);
+
+    if (canWrite) {
+      permissions.add(Permission.FEATURES_WRITE);
+      permissions.add(Permission.PRODUCTS_WRITE);
+      permissions.add(Permission.NOTES_WRITE);
+      permissions.add(Permission.OBJECTIVES_WRITE);
+      permissions.add(Permission.RELEASES_WRITE);
+      permissions.add(Permission.CUSTOM_FIELDS_WRITE);
+      permissions.add(Permission.WEBHOOKS_WRITE);
+      permissions.add(Permission.INTEGRATIONS_WRITE);
+      permissions.add(Permission.FEATURES_DELETE);
+      permissions.add(Permission.ANALYTICS_READ);
+    }
+
+    const accessLevel = isAdmin ? AccessLevel.ADMIN : canWrite ? AccessLevel.WRITE : AccessLevel.READ;
+
+    return {
+      permissions,
+      accessLevel,
+      isReadOnly: !canWrite,
+      canWrite,
+      canDelete,
+      isAdmin,
+      capabilities: {
+        users: { read: true, write: isAdmin, admin: isAdmin },
+        features: { read: true, write: canWrite, delete: canDelete },
+        products: { read: true, write: canWrite, delete: canDelete },
+        notes: { read: true, write: canWrite, delete: canDelete },
+        companies: { read: true, write: false },
+        objectives: { read: true, write: canWrite, delete: canDelete },
+        releases: { read: true, write: canWrite, delete: canDelete },
+        customFields: { read: true, write: isAdmin, delete: canDelete },
+        webhooks: { read: true, write: isAdmin, delete: canDelete },
+        analytics: { read: canWrite },
+        integrations: { read: true, write: canWrite },
+        export: { data: true },
+        bulk: { operations: canWrite },
+        search: { enabled: true },
+      },
     };
   }
 
