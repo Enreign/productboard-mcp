@@ -71,7 +71,7 @@ describe('ConfigManager', () => {
       expect(config.server.host).toBe('localhost');
       expect(config.server.timeout).toBe(30000);
       expect(config.auth.type).toBe(AuthenticationType.BEARER_TOKEN);
-      expect(config.api.baseUrl).toBe('https://api.productboard.com/v1');
+      expect(config.api.baseUrl).toBe('https://api.productboard.com');
       expect(config.logLevel).toBe('info');
       expect(config.nodeEnv).toBe('development');
     });
@@ -246,7 +246,7 @@ describe('ConfigManager', () => {
         const configManager = new ConfigManager();
         const config = configManager.get();
 
-        expect(config.api.baseUrl).toBe('https://api.productboard.com/v1');
+        expect(config.api.baseUrl).toBe('https://api.productboard.com');
         expect(config.api.timeout).toBe(10000);
         expect(config.api.retryAttempts).toBe(3);
         expect(config.api.retryDelay).toBe(1000);
@@ -667,7 +667,7 @@ describe('ConfigManager', () => {
       
       // Other values should remain unchanged
       expect(config.auth.type).toBe(AuthenticationType.BEARER_TOKEN);
-      expect(config.api.baseUrl).toBe('https://api.productboard.com/v1');
+      expect(config.api.baseUrl).toBe('https://api.productboard.com');
     });
 
     it('should merge nested configuration updates correctly', () => {
@@ -691,7 +691,7 @@ describe('ConfigManager', () => {
       expect(config.api.timeout).toBe(15000);
       
       // Other nested values should remain
-      expect(config.api.baseUrl).toBe('https://api.productboard.com/v1');
+      expect(config.api.baseUrl).toBe('https://api.productboard.com');
       expect(config.api.retryAttempts).toBe(3);
     });
 
@@ -840,7 +840,7 @@ describe('ConfigManager', () => {
       process.env.MCP_SERVER_PORT = '3000';
       process.env.PRODUCTBOARD_AUTH_TYPE = 'bearer';
       process.env.PRODUCTBOARD_API_TOKEN = 'production-token';
-      process.env.PRODUCTBOARD_API_BASE_URL = 'https://api.productboard.com/v1';
+      process.env.PRODUCTBOARD_API_BASE_URL = 'https://api.productboard.com';
       process.env.CACHE_ENABLED = 'false';
       process.env.LOG_LEVEL = 'warn';
       process.env.LOG_PRETTY = 'true';
@@ -853,7 +853,7 @@ describe('ConfigManager', () => {
       expect(config.server.port).toBe(3000);
       expect(config.auth.type).toBe(AuthenticationType.BEARER_TOKEN);
       expect(config.auth.token).toBe('production-token');
-      expect(config.api.baseUrl).toBe('https://api.productboard.com/v1');
+      expect(config.api.baseUrl).toBe('https://api.productboard.com');
       expect(config.cache.enabled).toBe(false);
       expect(config.logLevel).toBe('warn');
       expect(config.logPretty).toBe(true);

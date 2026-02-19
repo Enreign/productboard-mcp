@@ -57,7 +57,7 @@ describe('AuthenticationManager', () => {
     });
 
     it('should create BearerTokenAuth instance', () => {
-      expect(BearerTokenAuth).toHaveBeenCalledWith('https://api.productboard.com/v1');
+      expect(BearerTokenAuth).toHaveBeenCalledWith('https://api.productboard.com');
     });
 
     it('should return auth headers from bearer auth', () => {
@@ -145,8 +145,8 @@ describe('AuthenticationManager', () => {
       expect(OAuth2Auth).toHaveBeenCalledWith({
         clientId: 'test-client-id',
         clientSecret: 'test-client-secret',
-        authorizationEndpoint: 'https://api.productboard.com/v1/oauth/authorize',
-        tokenEndpoint: 'https://api.productboard.com/v1/oauth/token',
+        authorizationEndpoint: 'https://api.productboard.com/oauth/authorize',
+        tokenEndpoint: 'https://api.productboard.com/oauth/token',
         redirectUri: 'http://localhost:3000/callback',
       });
     });

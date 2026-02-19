@@ -24,7 +24,7 @@ export class AuthenticationManager implements AuthManagerInterface {
     this.authType = config.type;
     this.store = new SecureCredentialStore();
     this.logger = logger;
-    this.baseUrl = config.baseUrl || 'https://api.productboard.com/v1';
+    this.baseUrl = config.baseUrl || 'https://api.productboard.com';
 
     this.initializeAuthHandlers(config);
   }
