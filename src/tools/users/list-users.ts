@@ -60,11 +60,15 @@ export class ListUsersTool extends BaseTool<ListUsersParams> {
       ? (response as any).data
       : (Array.isArray(response) ? response : []);
 
-    const formatted = users.map((u: any, i: number) =>
-      `${i + 1}. ${u.name || u.email || 'Unknown User'}\n` +
-      `   Email: ${u.email || 'Unknown'}\n` +
-      `   Role: ${u.role || 'Unknown'}`
-    );
+    const formatted = users.map((u: any, i: number) => {
+      const email = u.email || u.user?.email || 'Unknown';
+      const name = u.name || u.user?.name || email;
+      const role = u.role?.name || (typeof u.role === 'string' ? u.role : null) ||
+        u.memberType || u.member_type || 'Unknown';
+      return `${i + 1}. ${name}\n` +
+        `   Email: ${email}\n` +
+        `   Role: ${role}`;
+    });
 
     const summary = users.length > 0
       ? `Found ${users.length} users:\n\n` + formatted.join('\n\n')

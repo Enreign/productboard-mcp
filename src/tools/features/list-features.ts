@@ -141,7 +141,7 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
           `${i + 1}. ${f.name}\n` +
           `   Status: ${f.status}\n` +
           `   Owner: ${f.owner}\n` +
-          `   Description: ${f.description || 'No description'}\n`
+          `   Description: ${f.description ? f.description.substring(0, 200) + (f.description.length > 200 ? '...' : '') : 'No description'}\n`
         ).join('\n')
       : 'No features found.';
     

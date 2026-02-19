@@ -85,11 +85,13 @@ export class ListReleasesTool extends BaseTool<ListReleasesParams> {
     const offset = params.offset || 0;
     const releases = allReleases.slice(offset, offset + limit);
 
+    const stripHtml = (s: string) => s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
     const formatted = releases.map((r: any, i: number) =>
       `${offset + i + 1}. ${r.name || 'Untitled Release'}\n` +
       `   Status: ${r.state?.name || r.status?.name || r.status || 'Unknown'}\n` +
       (r.release_date ? `   Date: ${r.release_date}\n` : '') +
-      (r.description ? `   Description: ${r.description.substring(0, 100)}\n` : '')
+      (r.description ? `   Description: ${stripHtml(r.description).substring(0, 150)}\n` : '')
     );
 
     const summary = releases.length > 0

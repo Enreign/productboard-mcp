@@ -55,21 +55,34 @@ export class ListKeyResultsTool extends BaseTool<ListKeyResultsParams> {
   protected async executeInternal(params: ListKeyResultsParams = {}): Promise<unknown> {
     this.logger.info('Listing key results');
 
+    // Only pass filters supported by the API - not limit/offset
     const queryParams: Record<string, any> = {};
     if (params.objective_id) queryParams.objective_id = params.objective_id;
     if (params.metric_type) queryParams.metric_type = params.metric_type;
-    if (params.limit) queryParams.limit = params.limit;
-    if (params.offset) queryParams.offset = params.offset;
 
     const response = await this.apiClient.makeRequest({
       method: 'GET',
-      endpoint: '/keyresults',
+      endpoint: '/key-results',
       params: queryParams,
     });
 
-    return {
-      success: true,
-      data: response,
-    };
+    const allKeyResults: any[] = Array.isArray((response as any)?.data) ? (response as any).data : [];
+    const limit = params.limit || 20;
+    const offset = params.offset || 0;
+    const keyResults = allKeyResults.slice(offset, offset + limit);
+
+    const formatted = keyResults.map((kr: any, i: number) =>
+      `${offset + i + 1}. ${kr.name || 'Untitled Key Result'}\n` +
+      `   Type: ${kr.metric_type || kr.type || 'Unknown'}\n` +
+      (kr.current_value !== undefined ? `   Current: ${kr.current_value}\n` : '') +
+      (kr.target_value !== undefined ? `   Target: ${kr.target_value}\n` : '') +
+      (kr.objective_id ? `   Objective: ${kr.objective_id}\n` : '')
+    );
+
+    const summary = keyResults.length > 0
+      ? `Found ${allKeyResults.length} key results, showing ${keyResults.length}:\n\n` + formatted.join('\n')
+      : 'No key results found.';
+
+    return { content: [{ type: 'text', text: summary }] };
   }
 }

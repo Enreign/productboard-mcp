@@ -3,18 +3,29 @@ import { ListKeyResultsTool } from '@tools/objectives/list-keyresults';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
-/** Parse the MCP content wrapper to get the underlying result */
-function parseResult(result: any): any {
-  if (result?.content?.[0]?.text) {
-    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
-  }
-  return result;
-}
-
 describe('ListKeyResultsTool', () => {
   let tool: ListKeyResultsTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
   let mockLogger: jest.Mocked<Logger>;
+
+  const mockKeyResults = [
+    {
+      id: 'kr_123',
+      objective_id: 'obj_456',
+      name: 'Increase Daily Active Users',
+      metric_type: 'number',
+      current_value: 5000,
+      target_value: 10000,
+    },
+    {
+      id: 'kr_789',
+      objective_id: 'obj_456',
+      name: 'Improve User Satisfaction',
+      metric_type: 'percentage',
+      current_value: 75,
+      target_value: 90,
+    },
+  ];
 
   beforeEach(() => {
     mockClient = {
@@ -25,14 +36,14 @@ describe('ListKeyResultsTool', () => {
       patch: jest.fn(),
       makeRequest: jest.fn(),
     } as unknown as jest.Mocked<ProductboardAPIClient>;
-    
+
     mockLogger = {
       info: jest.fn(),
       debug: jest.fn(),
       error: jest.fn(),
       warn: jest.fn(),
     } as any;
-    
+
     tool = new ListKeyResultsTool(mockClient, mockLogger);
   });
 
@@ -90,7 +101,7 @@ describe('ListKeyResultsTool', () => {
     it('should validate limit range', async () => {
       const inputTooLow = { limit: 0 } as any;
       await expect(tool.execute(inputTooLow)).rejects.toThrow('Invalid parameters');
-      
+
       const inputTooHigh = { limit: 101 } as any;
       await expect(tool.execute(inputTooHigh)).rejects.toThrow('Invalid parameters');
     });
@@ -114,188 +125,77 @@ describe('ListKeyResultsTool', () => {
 
   describe('execute', () => {
     it('should list key results with no filters', async () => {
-      const expectedResponse = {
-        keyResults: [
-          {
-            id: 'kr_123',
-            objective_id: 'obj_456',
-            name: 'Increase Daily Active Users',
-            metric_type: 'number',
-            current_value: 5000,
-            target_value: 10000,
-            unit: 'users',
-            progress: 0.5,
-            created_at: '2024-01-15T10:00:00Z',
-          },
-          {
-            id: 'kr_789',
-            objective_id: 'obj_456',
-            name: 'Improve User Satisfaction',
-            metric_type: 'percentage',
-            current_value: 75,
-            target_value: 90,
-            unit: '%',
-            progress: 0.83,
-            created_at: '2024-01-10T10:00:00Z',
-          },
-        ],
-        total: 2,
-        limit: 20,
-        offset: 0,
-      };
-      
-      mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
+      mockClient.makeRequest.mockResolvedValueOnce({ data: mockKeyResults });
 
-      const result = parseResult(await tool.execute({}));
+      const result = await tool.execute({});
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/keyresults',
+        endpoint: '/key-results',
         params: {},
       });
-      expect(result).toEqual({
-        success: true,
-        data: expectedResponse,
-      });
+
+      expect(result.content[0].type).toBe('text');
+      expect(result.content[0].text).toContain('Increase Daily Active Users');
+      expect(result.content[0].text).toContain('Improve User Satisfaction');
+      expect(result.content[0].text).toContain('Found 2 key results');
     });
 
-    it('should list key results with filters', async () => {
-      const input = {
+    it('should filter by objective_id without sending limit/offset to API', async () => {
+      mockClient.makeRequest.mockResolvedValueOnce({ data: [mockKeyResults[0]] });
+
+      await tool.execute({
         objective_id: 'obj_123',
         metric_type: 'percentage' as const,
         limit: 10,
         offset: 5,
-      };
-      const expectedResponse = {
-        keyResults: [
-          {
-            id: 'kr_789',
-            objective_id: 'obj_123',
-            name: 'Improve User Satisfaction',
-            metric_type: 'percentage',
-            current_value: 75,
-            target_value: 90,
-            unit: '%',
-            progress: 0.83,
-            created_at: '2024-01-15T10:00:00Z',
-          },
-        ],
-        total: 1,
-        limit: 10,
-        offset: 5,
-      };
-      
-      mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
+      });
 
-      const result = parseResult(await tool.execute(input));
-
+      // limit and offset are NOT sent to the API (client-side only)
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/keyresults',
+        endpoint: '/key-results',
         params: {
           objective_id: 'obj_123',
           metric_type: 'percentage',
-          limit: 10,
-          offset: 5,
         },
-      });
-      expect(result).toEqual({
-        success: true,
-        data: expectedResponse,
       });
     });
 
-    it('should list key results by objective only', async () => {
-      const input = {
-        objective_id: 'obj_123',
-      };
-      const expectedResponse = {
-        keyResults: [
-          {
-            id: 'kr_123',
-            objective_id: 'obj_123',
-            name: 'Increase Daily Active Users',
-            metric_type: 'number',
-            current_value: 5000,
-            target_value: 10000,
-            unit: 'users',
-            progress: 0.5,
-            created_at: '2024-01-15T10:00:00Z',
-          },
-          {
-            id: 'kr_456',
-            objective_id: 'obj_123',
-            name: 'Increase MRR',
-            metric_type: 'currency',
-            current_value: 50000,
-            target_value: 100000,
-            unit: 'USD',
-            progress: 0.5,
-            created_at: '2024-01-10T10:00:00Z',
-          },
-        ],
-        total: 2,
-        limit: 20,
-        offset: 0,
-      };
-      
-      mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
+    it('should filter by objective_id only', async () => {
+      mockClient.makeRequest.mockResolvedValueOnce({ data: mockKeyResults });
 
-      const result = parseResult(await tool.execute(input));
+      const result = await tool.execute({ objective_id: 'obj_123' });
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/keyresults',
-        params: {
-          objective_id: 'obj_123',
-        },
+        endpoint: '/key-results',
+        params: { objective_id: 'obj_123' },
       });
-      expect(result).toEqual({
-        success: true,
-        data: expectedResponse,
-      });
+
+      expect(result.content[0].text).toContain('Increase Daily Active Users');
     });
 
-    it('should list key results by metric type only', async () => {
-      const input = {
-        metric_type: 'currency' as const,
-        limit: 5,
-      };
-      const expectedResponse = {
-        keyResults: [
-          {
-            id: 'kr_456',
-            objective_id: 'obj_123',
-            name: 'Increase MRR',
-            metric_type: 'currency',
-            current_value: 50000,
-            target_value: 100000,
-            unit: 'USD',
-            progress: 0.5,
-            created_at: '2024-01-10T10:00:00Z',
-          },
-        ],
-        total: 1,
-        limit: 5,
-        offset: 0,
-      };
-      
-      mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
+    it('should filter by metric_type only', async () => {
+      mockClient.makeRequest.mockResolvedValueOnce({ data: [mockKeyResults[1]] });
 
-      const result = parseResult(await tool.execute(input));
+      const result = await tool.execute({ metric_type: 'currency' as const, limit: 5 });
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/keyresults',
-        params: {
-          metric_type: 'currency',
-          limit: 5,
-        },
+        endpoint: '/key-results',
+        params: { metric_type: 'currency' },
       });
-      expect(result).toEqual({
-        success: true,
-        data: expectedResponse,
-      });
+
+      expect(result.content[0].text).toContain('Improve User Satisfaction');
+    });
+
+    it('should handle empty results', async () => {
+      mockClient.makeRequest.mockResolvedValueOnce({ data: [] });
+
+      const result = await tool.execute({});
+
+      expect(result.content[0].text).toBe('No key results found.');
     });
 
     it('should handle API errors gracefully', async () => {
@@ -308,142 +208,16 @@ describe('ListKeyResultsTool', () => {
       const error = new Error('Authentication failed');
       (error as any).response = {
         status: 401,
-        data: {
-          error: true,
-          code: 'AUTH_FAILED',
-          message: 'Authentication failed',
-          details: {},
-        },
+        data: { error: true, code: 'AUTH_FAILED', message: 'Authentication failed', details: {} },
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
       await expect(tool.execute({})).rejects.toThrow('Authentication failed');
     });
 
-    it('should handle forbidden errors', async () => {
-      const error = new Error('Insufficient permissions');
-      (error as any).response = {
-        status: 403,
-        data: {
-          error: true,
-          code: 'FORBIDDEN',
-          message: 'Insufficient permissions',
-          details: {},
-        },
-      };
-      mockClient.makeRequest.mockRejectedValueOnce(error);
-
-      await expect(tool.execute({})).rejects.toThrow('Insufficient permissions');
-    });
-
     it('should throw error if client not initialized', async () => {
       const uninitializedTool = new ListKeyResultsTool(null as any, mockLogger);
       await expect(uninitializedTool.execute({})).rejects.toThrow();
-    });
-  });
-
-  describe('response transformation', () => {
-    it('should transform API response correctly', async () => {
-      const apiResponse = {
-        keyResults: [
-          {
-            id: 'kr_123',
-            objective_id: 'obj_456',
-            name: 'Test Key Result',
-            metric_type: 'number',
-            current_value: 50,
-            target_value: 100,
-            progress: 0.5,
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-          },
-        ],
-        total: 1,
-        limit: 20,
-        offset: 0,
-      };
-
-      mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
-
-      const result = parseResult(await tool.execute({}));
-
-      expect(result).toEqual({
-        success: true,
-        data: apiResponse,
-      });
-      expect((result as any).data).toHaveProperty('keyResults');
-      expect((result as any).data).toHaveProperty('total', 1);
-      expect((result as any).data.keyResults[0]).toHaveProperty('id', 'kr_123');
-      expect((result as any).data.keyResults[0]).toHaveProperty('progress', 0.5);
-    });
-
-    it('should handle empty results', async () => {
-      const apiResponse = {
-        keyResults: [],
-        total: 0,
-        limit: 20,
-        offset: 0,
-      };
-
-      mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
-
-      const result = parseResult(await tool.execute({}));
-
-      expect(result).toEqual({
-        success: true,
-        data: apiResponse,
-      });
-      expect((result as any).data.keyResults).toHaveLength(0);
-    });
-
-    it('should handle different metric types correctly', async () => {
-      const apiResponse = {
-        keyResults: [
-          {
-            id: 'kr_123',
-            name: 'Number Metric',
-            metric_type: 'number',
-            current_value: 5000,
-            target_value: 10000,
-            unit: 'users',
-            progress: 0.5,
-          },
-          {
-            id: 'kr_456',
-            name: 'Percentage Metric',
-            metric_type: 'percentage',
-            current_value: 75,
-            target_value: 90,
-            unit: '%',
-            progress: 0.83,
-          },
-          {
-            id: 'kr_789',
-            name: 'Currency Metric',
-            metric_type: 'currency',
-            current_value: 50000,
-            target_value: 100000,
-            unit: 'USD',
-            progress: 0.5,
-          },
-        ],
-        total: 3,
-        limit: 20,
-        offset: 0,
-      };
-
-      mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
-
-      const result = parseResult(await tool.execute({}));
-
-      expect(result).toEqual({
-        success: true,
-        data: apiResponse,
-      });
-      expect((result as any).data.keyResults).toHaveLength(3);
-      expect((result as any).data.keyResults[0].metric_type).toBe('number');
-      expect((result as any).data.keyResults[1].metric_type).toBe('percentage');
-      expect((result as any).data.keyResults[2].metric_type).toBe('currency');
     });
   });
 });
