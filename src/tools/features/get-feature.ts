@@ -49,7 +49,7 @@ export class GetFeatureTool extends BaseTool<GetFeatureParams> {
       queryParams.include = params.include.join(',');
     }
 
-    const response = await this.apiClient.get(`/features/${params.id}`, queryParams);
+    const response = await this.apiClient.get(`/entities/${params.id}`, queryParams);
 
     return {
       success: true,

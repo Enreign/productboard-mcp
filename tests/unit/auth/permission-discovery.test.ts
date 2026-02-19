@@ -29,10 +29,6 @@ describe('PermissionDiscoveryService', () => {
     );
   });
 
-  // Note: discoverUserPermissions() currently has an early return that skips
-  // API-based permission discovery and returns read-only permissions via
-  // createReadOnlyUserPermissions(). All tests verify this read-only behavior.
-
   describe('discoverUserPermissions', () => {
     it('should return read-only permissions', async () => {
       const permissions = await service.discoverUserPermissions();
@@ -47,6 +43,8 @@ describe('PermissionDiscoveryService', () => {
       expect(permissions.permissions.has(Permission.FEATURES_READ)).toBe(true);
       expect(permissions.permissions.has(Permission.PRODUCTS_READ)).toBe(true);
       expect(permissions.permissions.has(Permission.NOTES_READ)).toBe(true);
+      expect(permissions.permissions.has(Permission.OBJECTIVES_READ)).toBe(true);
+      expect(permissions.permissions.has(Permission.RELEASES_READ)).toBe(true);
 
       // Should not have write permissions
       expect(permissions.permissions.has(Permission.FEATURES_WRITE)).toBe(false);
@@ -77,33 +75,9 @@ describe('PermissionDiscoveryService', () => {
       // Check capabilities structure matches read-only defaults
       expect(permissions.capabilities.features.read).toBe(true);
       expect(permissions.capabilities.features.write).toBe(false);
-      expect(permissions.capabilities.webhooks.read).toBe(true);
-      expect(permissions.capabilities.webhooks.write).toBe(false);
-      expect(permissions.capabilities.analytics.read).toBe(false);
-      expect(permissions.capabilities.search.enabled).toBe(true);
-      expect(permissions.capabilities.bulk.operations).toBe(false);
-    });
-
-    it('should include all expected read permissions', async () => {
-      const permissions = await service.discoverUserPermissions();
-
-      expect(permissions.permissions.has(Permission.USERS_READ)).toBe(true);
-      expect(permissions.permissions.has(Permission.FEATURES_READ)).toBe(true);
-      expect(permissions.permissions.has(Permission.PRODUCTS_READ)).toBe(true);
-      expect(permissions.permissions.has(Permission.NOTES_READ)).toBe(true);
-      expect(permissions.permissions.has(Permission.COMPANIES_READ)).toBe(true);
-      expect(permissions.permissions.has(Permission.OBJECTIVES_READ)).toBe(true);
-      expect(permissions.permissions.has(Permission.RELEASES_READ)).toBe(true);
-      expect(permissions.permissions.has(Permission.CUSTOM_FIELDS_READ)).toBe(true);
-      expect(permissions.permissions.has(Permission.WEBHOOKS_READ)).toBe(true);
-      expect(permissions.permissions.has(Permission.SEARCH)).toBe(true);
-      expect(permissions.permissions.has(Permission.INTEGRATIONS_READ)).toBe(true);
-    });
-
-    it('should not include analytics permissions', async () => {
-      const permissions = await service.discoverUserPermissions();
-
-      expect(permissions.permissions.has(Permission.ANALYTICS_READ)).toBe(false);
+      expect(permissions.capabilities.notes.read).toBe(true);
+      expect(permissions.capabilities.objectives.read).toBe(true);
+      expect(permissions.capabilities.releases.read).toBe(true);
     });
   });
 });

@@ -152,8 +152,8 @@ describe('ListObjectivesTool', () => {
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/objectives',
-        params: {},
+        endpoint: '/entities',
+        params: { type: 'objective' },
       });
 
       expect(result.content[0].type).toBe('text');
@@ -177,8 +177,9 @@ describe('ListObjectivesTool', () => {
       // limit and offset are NOT sent to the API (client-side only)
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/objectives',
+        endpoint: '/entities',
         params: {
+          type: 'objective',
           status: 'active',
           owner_email: 'jane.doe@example.com',
           period: 'quarter',
@@ -200,8 +201,9 @@ describe('ListObjectivesTool', () => {
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/objectives',
+        endpoint: '/entities',
         params: {
+          type: 'objective',
           status: 'completed',
         },
       });

@@ -79,8 +79,8 @@ describe('ListProductsTool', () => {
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/products',
-        params: {},
+        endpoint: '/entities',
+        params: { type: 'product' },
       });
 
       expect(result.content[0].type).toBe('text');
@@ -110,8 +110,8 @@ describe('ListProductsTool', () => {
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/products',
-        params: { parent_id: 'prod-1' },
+        endpoint: '/entities',
+        params: { type: 'product', parent_id: 'prod-1' },
       });
 
       expect(result.content[0].text).toContain('Sub Product 1');
@@ -128,8 +128,8 @@ describe('ListProductsTool', () => {
       // include_components is not forwarded to API (not a supported param)
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/products',
-        params: {},
+        endpoint: '/entities',
+        params: { type: 'product' },
       });
 
       expect(result.content[0].text).toContain('Product A');

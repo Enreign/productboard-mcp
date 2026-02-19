@@ -88,8 +88,8 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
   }
 
   protected async executeInternal(params: ListFeaturesParams): Promise<unknown> {
-    // Build query parameters with only supported API parameters
-    const queryParams: Record<string, any> = {};
+    // Build query parameters for v2 /entities endpoint
+    const queryParams: Record<string, any> = { type: 'feature' };
 
     // Add supported parameters only
     if (params.status) queryParams.status = params.status;
@@ -101,8 +101,7 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
       queryParams.tags = params.tags.join(',');
     }
 
-    // Note: Productboard API /features endpoint does not support limit, offset, sort, order parameters
-    const response = await this.apiClient.get('/features', queryParams);
+    const response = await this.apiClient.get('/entities', queryParams);
 
     const features = extractResponseData(response);
     

@@ -131,8 +131,8 @@ describe('ListKeyResultsTool', () => {
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/key-results',
-        params: {},
+        endpoint: '/entities',
+        params: { type: 'keyResult' },
       });
 
       expect(result.content[0].type).toBe('text');
@@ -154,8 +154,9 @@ describe('ListKeyResultsTool', () => {
       // limit and offset are NOT sent to the API (client-side only)
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/key-results',
+        endpoint: '/entities',
         params: {
+          type: 'keyResult',
           objective_id: 'obj_123',
           metric_type: 'percentage',
         },
@@ -169,8 +170,8 @@ describe('ListKeyResultsTool', () => {
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/key-results',
-        params: { objective_id: 'obj_123' },
+        endpoint: '/entities',
+        params: { type: 'keyResult', objective_id: 'obj_123' },
       });
 
       expect(result.content[0].text).toContain('Increase Daily Active Users');
@@ -183,8 +184,8 @@ describe('ListKeyResultsTool', () => {
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/key-results',
-        params: { metric_type: 'currency' },
+        endpoint: '/entities',
+        params: { type: 'keyResult', metric_type: 'currency' },
       });
 
       expect(result.content[0].text).toContain('Improve User Satisfaction');

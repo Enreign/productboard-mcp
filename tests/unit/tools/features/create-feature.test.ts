@@ -157,7 +157,7 @@ describe('CreateFeatureTool', () => {
 
       const result = parseResult(await tool.execute(validInput));
 
-      expect(mockClient.post).toHaveBeenCalledWith('/features', validInput);
+      expect(mockClient.post).toHaveBeenCalledWith('/entities', { type: 'feature', fields: { ...validInput, status: validInput.status || 'new' } });
       expect(result).toEqual({
         success: true,
         data: expectedResponse,
@@ -251,9 +251,12 @@ describe('CreateFeatureTool', () => {
 
       await tool.execute(inputWithoutStatus);
 
-      expect(mockClient.post).toHaveBeenCalledWith('/features', {
-        ...inputWithoutStatus,
-        status: 'new',
+      expect(mockClient.post).toHaveBeenCalledWith('/entities', {
+        type: 'feature',
+        fields: {
+          ...inputWithoutStatus,
+          status: 'new',
+        },
       });
     });
   });

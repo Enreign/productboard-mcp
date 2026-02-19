@@ -96,7 +96,7 @@ describe('BaseTool Permission System', () => {
       const tool = new TestTool(
         mockApiClient as any,
         mockLogger as any,
-        [Permission.ANALYTICS_READ],
+        [Permission.FEATURES_DELETE],
         AccessLevel.ADMIN
       );
 
@@ -106,7 +106,7 @@ describe('BaseTool Permission System', () => {
         canWrite: true,
         canDelete: false,
         isAdmin: false,
-        permissions: new Set([Permission.ANALYTICS_READ]), // Has permission but not access level
+        permissions: new Set([Permission.FEATURES_DELETE]), // Has permission but not access level
         capabilities: {} as any
       };
 
@@ -207,7 +207,7 @@ describe('BaseTool Permission System', () => {
       const adminTool = new TestTool(
         mockApiClient as any,
         mockLogger as any,
-        [Permission.WEBHOOKS_WRITE],
+        [Permission.RELEASES_DELETE],
         AccessLevel.ADMIN
       );
 
@@ -222,7 +222,7 @@ describe('BaseTool Permission System', () => {
       const tool = new TestTool(
         mockApiClient as any,
         mockLogger as any,
-        [Permission.FEATURES_READ, Permission.PRODUCTS_READ, Permission.SEARCH],
+        [Permission.FEATURES_READ, Permission.PRODUCTS_READ, Permission.NOTES_READ],
         AccessLevel.READ
       );
 
@@ -230,7 +230,7 @@ describe('BaseTool Permission System', () => {
       expect(required).toHaveLength(3);
       expect(required).toContain(Permission.FEATURES_READ);
       expect(required).toContain(Permission.PRODUCTS_READ);
-      expect(required).toContain(Permission.SEARCH);
+      expect(required).toContain(Permission.NOTES_READ);
     });
 
     it('should return a copy of permissions array', () => {

@@ -43,7 +43,7 @@ export class DeleteFeatureTool extends BaseTool<DeleteFeatureParams> {
 
     if (permanent) {
       // Permanent deletion
-      await this.apiClient.delete(`/features/${id}`);
+      await this.apiClient.delete(`/entities/${id}`);
       return {
         success: true,
         data: {
@@ -53,8 +53,8 @@ export class DeleteFeatureTool extends BaseTool<DeleteFeatureParams> {
       };
     } else {
       // Archive by updating status
-      const feature = await this.apiClient.patch(`/features/${id}`, {
-        status: 'archived',
+      const feature = await this.apiClient.patch(`/entities/${id}`, {
+        fields: { status: 'archived' },
       });
       return {
         success: true,

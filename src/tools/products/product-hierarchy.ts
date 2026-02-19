@@ -47,11 +47,10 @@ export class ProductHierarchyTool extends BaseTool<ProductHierarchyParams> {
   protected async executeInternal(params: ProductHierarchyParams): Promise<unknown> {
     this.logger.info('Getting product hierarchy');
 
-    // Use /products endpoint - /products/hierarchy may not exist
-    const queryParams: Record<string, any> = {};
+    const queryParams: Record<string, any> = { type: 'product' };
     if (params.product_id) queryParams.parent_id = params.product_id;
 
-    const response = await this.apiClient.get('/products', queryParams);
+    const response = await this.apiClient.get('/entities', queryParams);
 
     const products: any[] = Array.isArray((response as any)?.data) ? (response as any).data : [];
 

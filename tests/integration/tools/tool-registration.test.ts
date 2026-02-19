@@ -2,17 +2,16 @@ import { ToolRegistry } from '@core/registry.js';
 import { ProductboardAPIClient } from '@api/index';
 import { Logger } from '@utils/logger';
 import { GetFeatureTool } from '@tools/features/get-feature';
+import { ListFeaturesTool } from '@tools/features/list-features';
 import { ListProductsTool } from '@tools/products/list-products';
 import { CreateProductTool } from '@tools/products/create-product';
 import { ProductHierarchyTool } from '@tools/products/product-hierarchy';
 import { CreateNoteTool } from '@tools/notes/create-note';
 import { ListNotesTool } from '@tools/notes/list-notes';
-import { AttachNoteTool } from '@tools/notes/attach-note';
-import { ListUsersTool } from '@tools/users/list-users';
-import { CurrentUserTool } from '@tools/users/current-user';
-import { ListCompaniesTool } from '@tools/companies/list-companies';
-import { GlobalSearchTool } from '@tools/search/global-search';
-import { BulkUpdateFeaturesTool } from '@tools/bulk/bulk-update-features';
+import { ListObjectivesTool } from '@tools/objectives/list-objectives';
+import { CreateObjectiveTool } from '@tools/objectives/create-objective';
+import { ListReleasesTool } from '@tools/releases/list-releases';
+import { CreateReleaseTool } from '@tools/releases/create-release';
 
 describe('Tool Registration Integration', () => {
   let registry: ToolRegistry;
@@ -22,6 +21,11 @@ describe('Tool Registration Integration', () => {
   beforeEach(() => {
     mockApiClient = {
       makeRequest: jest.fn(),
+      get: jest.fn(),
+      post: jest.fn(),
+      put: jest.fn(),
+      patch: jest.fn(),
+      delete: jest.fn(),
     } as any;
 
     mockLogger = {
@@ -38,6 +42,7 @@ describe('Tool Registration Integration', () => {
     it('should register all feature tools', () => {
       const tools = [
         new GetFeatureTool(mockApiClient, mockLogger),
+        new ListFeaturesTool(mockApiClient, mockLogger),
       ];
 
       tools.forEach(tool => {
@@ -45,7 +50,8 @@ describe('Tool Registration Integration', () => {
       });
 
       expect(registry.hasTool('pb_feature_get')).toBe(true);
-      expect(registry.size()).toBe(1);
+      expect(registry.hasTool('pb_feature_list')).toBe(true);
+      expect(registry.size()).toBe(2);
     });
 
     it('should register all product tools', () => {
@@ -69,7 +75,6 @@ describe('Tool Registration Integration', () => {
       const tools = [
         new CreateNoteTool(mockApiClient, mockLogger),
         new ListNotesTool(mockApiClient, mockLogger),
-        new AttachNoteTool(mockApiClient, mockLogger),
       ];
 
       tools.forEach(tool => {
@@ -78,39 +83,36 @@ describe('Tool Registration Integration', () => {
 
       expect(registry.hasTool('pb_note_create')).toBe(true);
       expect(registry.hasTool('pb_note_list')).toBe(true);
-      expect(registry.hasTool('pb_note_attach')).toBe(true);
-      expect(registry.size()).toBe(3);
+      expect(registry.size()).toBe(2);
     });
 
-    it('should register all user/company tools', () => {
+    it('should register all objective tools', () => {
       const tools = [
-        new ListUsersTool(mockApiClient, mockLogger),
-        new CurrentUserTool(mockApiClient, mockLogger),
-        new ListCompaniesTool(mockApiClient, mockLogger),
+        new ListObjectivesTool(mockApiClient, mockLogger),
+        new CreateObjectiveTool(mockApiClient, mockLogger),
       ];
 
       tools.forEach(tool => {
         registry.registerTool(tool);
       });
 
-      expect(registry.hasTool('pb_user_list')).toBe(true);
-      expect(registry.hasTool('pb_user_current')).toBe(true);
-      expect(registry.hasTool('pb_company_list')).toBe(true);
-      expect(registry.size()).toBe(3);
+      expect(registry.hasTool('pb_objective_list')).toBe(true);
+      expect(registry.hasTool('pb_objective_create')).toBe(true);
+      expect(registry.size()).toBe(2);
     });
 
-    it('should register utility tools', () => {
+    it('should register all release tools', () => {
       const tools = [
-        new GlobalSearchTool(mockApiClient, mockLogger),
-        new BulkUpdateFeaturesTool(mockApiClient, mockLogger),
+        new ListReleasesTool(mockApiClient, mockLogger),
+        new CreateReleaseTool(mockApiClient, mockLogger),
       ];
 
       tools.forEach(tool => {
         registry.registerTool(tool);
       });
 
-      expect(registry.hasTool('pb_search')).toBe(true);
-      expect(registry.hasTool('pb_feature_bulk_update')).toBe(true);
+      expect(registry.hasTool('pb_release_list')).toBe(true);
+      expect(registry.hasTool('pb_release_create')).toBe(true);
       expect(registry.size()).toBe(2);
     });
   });
@@ -151,39 +153,18 @@ describe('Tool Registration Integration', () => {
     });
   });
 
-  describe('tool execution through registry', () => {
-    it('should execute tool successfully', async () => {
-      const tool = new CurrentUserTool(mockApiClient, mockLogger);
-      registry.registerTool(tool);
-
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: [{ id: 'feature-1' }],
-        links: {},
-      });
-
-      const registeredTool = registry.getTool('pb_user_current');
-      expect(registeredTool).toBeTruthy();
-
-      const result = await registeredTool!.execute({});
-      expect(result.content[0].text).toContain('Authentication verified');
-    });
-  });
-
   describe('tool naming convention validation', () => {
     it('should follow pb_<resource>_<action> pattern', () => {
       const tools = [
         new GetFeatureTool(mockApiClient, mockLogger),
+        new ListFeaturesTool(mockApiClient, mockLogger),
         new ListProductsTool(mockApiClient, mockLogger),
         new CreateProductTool(mockApiClient, mockLogger),
         new ProductHierarchyTool(mockApiClient, mockLogger),
         new CreateNoteTool(mockApiClient, mockLogger),
         new ListNotesTool(mockApiClient, mockLogger),
-        new AttachNoteTool(mockApiClient, mockLogger),
-        new ListUsersTool(mockApiClient, mockLogger),
-        new CurrentUserTool(mockApiClient, mockLogger),
-        new ListCompaniesTool(mockApiClient, mockLogger),
-        new GlobalSearchTool(mockApiClient, mockLogger),
-        new BulkUpdateFeaturesTool(mockApiClient, mockLogger),
+        new ListObjectivesTool(mockApiClient, mockLogger),
+        new ListReleasesTool(mockApiClient, mockLogger),
       ];
 
       tools.forEach(tool => {

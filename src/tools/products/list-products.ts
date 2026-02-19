@@ -45,12 +45,12 @@ export class ListProductsTool extends BaseTool<ListProductsParams> {
   protected async executeInternal(params: ListProductsParams): Promise<unknown> {
     this.logger.info('Listing products');
 
-    const queryParams: Record<string, any> = {};
+    const queryParams: Record<string, any> = { type: 'product' };
     if (params.parent_id) queryParams.parent_id = params.parent_id;
 
     const response = await this.apiClient.makeRequest({
       method: 'GET',
-      endpoint: '/products',
+      endpoint: '/entities',
       params: queryParams,
     });
 

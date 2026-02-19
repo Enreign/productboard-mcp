@@ -141,8 +141,8 @@ describe('ListReleasesTool', () => {
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/releases',
-        params: {},
+        endpoint: '/entities',
+        params: { type: 'release' },
       });
 
       expect(result.content[0].type).toBe('text');
@@ -168,8 +168,9 @@ describe('ListReleasesTool', () => {
       // limit and offset are NOT sent to the API (client-side only)
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/releases',
+        endpoint: '/entities',
         params: {
+          type: 'release',
           release_group_id: 'group_123',
           status: 'in_progress',
           date_from: '2024-01-01',
@@ -192,8 +193,8 @@ describe('ListReleasesTool', () => {
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/releases',
-        params: { status: 'released' },
+        endpoint: '/entities',
+        params: { type: 'release', status: 'released' },
       });
 
       expect(result.content[0].text).toBe('No releases found.');

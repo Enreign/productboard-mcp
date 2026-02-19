@@ -64,13 +64,15 @@ export class CreateFeatureTool extends BaseTool<FeaturePayload> {
   }
 
   protected async executeInternal(params: FeaturePayload): Promise<unknown> {
-    // Set default status if not provided
     const requestData = {
-      ...params,
-      status: params.status || 'new',
+      type: 'feature',
+      fields: {
+        ...params,
+        status: params.status || 'new',
+      },
     };
 
-    const response = await this.apiClient.post('/features', requestData);
+    const response = await this.apiClient.post('/entities', requestData);
 
     return {
       success: true,

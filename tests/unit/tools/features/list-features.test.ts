@@ -110,8 +110,8 @@ describe('ListFeaturesTool', () => {
 
       const result = await tool.execute({});
 
-      // Implementation only sends supported API params (no limit/offset/sort/order)
-      expect(mockClient.get).toHaveBeenCalledWith('/features', {});
+      // v2 API: uses /entities with type=feature
+      expect(mockClient.get).toHaveBeenCalledWith('/entities', { type: 'feature' });
       // Result should be MCP content format
       expect(result).toHaveProperty('content');
       expect(result.content[0]).toHaveProperty('type', 'text');
@@ -131,7 +131,8 @@ describe('ListFeaturesTool', () => {
 
       await tool.execute(filters);
 
-      expect(mockClient.get).toHaveBeenCalledWith('/features', {
+      expect(mockClient.get).toHaveBeenCalledWith('/entities', {
+          type: 'feature',
           status: 'in_progress',
           product_id: 'prod_789',
           owner_email: 'john.doe@example.com',

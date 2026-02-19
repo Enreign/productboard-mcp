@@ -71,7 +71,7 @@ export class UpdateReleaseTool extends BaseTool<UpdateReleaseParams> {
       };
     }
 
-    const response = await this.apiClient.put(`/releases/${id}`, updateData);
+    const response = await this.apiClient.patch(`/entities/${id}`, { fields: updateData });
 
     return {
       success: true,

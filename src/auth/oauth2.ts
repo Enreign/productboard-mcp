@@ -104,12 +104,10 @@ export class OAuth2Auth {
   }
 
   getHeaders(accessToken: string): AuthHeaders {
-    // Productboard recommends versioning via X-Version header
     return {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      'X-Version': '1',
     };
   }
 }

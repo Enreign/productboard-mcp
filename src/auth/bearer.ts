@@ -20,7 +20,7 @@ export class BearerTokenAuth {
     }
     
     try {
-      const url = "https://api.productboard.com/features";
+      const url = "https://api.productboard.com/v2/entities?type=feature";
       this.logger.debug('Bearer token validation URL', { url });
       this.logger.debug('Headers', this.getHeaders(token));
       
@@ -59,7 +59,6 @@ export class BearerTokenAuth {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'X-Version': '1',
     };
   }
 }
