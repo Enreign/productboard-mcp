@@ -8,6 +8,14 @@ import { ProductboardAPIClient } from '../../../../src/api/client.js';
 import { AuthenticationManager } from '../../../../src/auth/manager.js';
 import { Logger } from '../../../../src/utils/logger.js';
 import { RateLimiter } from '../../../../src/middleware/rateLimiter.js';
+import { ToolExecutionError } from '../../../../src/utils/errors.js';
+
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
 
 describe('Feature Tools Integration Tests', () => {
   const API_BASE_URL = 'https://api.productboard.com';
@@ -96,8 +104,9 @@ describe('Feature Tools Integration Tests', () => {
         .reply(201, { success: true, data: validFeature });
 
       const result = await createTool.execute(createFeatureInput);
+      const parsed = parseResult(result);
 
-      expect(result).toMatchObject({
+      expect(parsed).toMatchObject({
         success: true,
         data: expect.objectContaining({
           id: 'feature-123',
@@ -115,15 +124,12 @@ describe('Feature Tools Integration Tests', () => {
           errors: [{ field: 'name', message: 'Name is required' }],
         });
 
-      const result = await createTool.execute({
-        name: '',
-        description: 'Test',
-      });
-
-      expect(result).toMatchObject({
-        success: false,
-        error: expect.stringContaining('Validation failed'),
-      });
+      await expect(
+        createTool.execute({
+          name: '',
+          description: 'Test',
+        })
+      ).rejects.toThrow(ToolExecutionError);
       expect(scope.isDone()).toBe(true);
     });
 
@@ -135,8 +141,9 @@ describe('Feature Tools Integration Tests', () => {
         .reply(201, { success: true, data: validFeature });
 
       const result = await createTool.execute(createFeatureInput);
+      const parsed = parseResult(result);
 
-      expect(result).toMatchObject({
+      expect(parsed).toMatchObject({
         success: true,
         data: expect.objectContaining({
           id: 'feature-123',
@@ -154,35 +161,23 @@ describe('Feature Tools Integration Tests', () => {
         .reply(200, listFeaturesResponse);
 
       const result = await listTool.execute({});
+      const text = result.content[0].text;
 
-      expect(result).toMatchObject({
-        data: expect.arrayContaining([
-          expect.objectContaining({
-            id: 'feature-123',
-            name: 'Test Feature',
-          }),
-        ]),
-      });
+      expect(text).toContain('Found 1 features total');
+      expect(text).toContain('Test Feature');
       expect(scope.isDone()).toBe(true);
     });
 
     it('should filter features by product', async () => {
       const scope = nock(API_BASE_URL)
         .get('/features')
-        .query({
-          product_id: 'product-1',
-          limit: 20,
-          offset: 0,
-          sort: 'created_at',
-          order: 'desc'
-        })
+        .query({ product_id: 'product-1' })
         .reply(200, listFeaturesResponse);
 
       const result = await listTool.execute({ product_id: 'product-1' });
+      const text = result.content[0].text;
 
-      expect(result).toMatchObject({
-        data: expect.any(Array),
-      });
+      expect(text).toContain('Found 1 features total');
       expect(scope.isDone()).toBe(true);
     });
 
@@ -194,13 +189,7 @@ describe('Feature Tools Integration Tests', () => {
 
       const result = await listTool.execute({});
 
-      expect(result).toMatchObject({
-        data: [],
-        pagination: {
-          total: 0,
-          hasMore: false,
-        },
-      });
+      expect(result.content[0].text).toBe('No features found.');
       expect(scope.isDone()).toBe(true);
     });
   });
@@ -229,13 +218,14 @@ describe('Feature Tools Integration Tests', () => {
         .reply(200, { success: true, data: updatedFeature });
 
       const result = await updateTool.execute(updateData);
+      const parsed = parseResult(result);
 
-      expect(result).toMatchObject({
+      expect(parsed).toMatchObject({
         success: true,
         data: expect.objectContaining({
           id: 'feature-123',
           name: 'Updated Feature Name',
-          status: 'in_progress' as const,
+          status: 'in_progress',
         }),
       });
       expect(scope.isDone()).toBe(true);
@@ -246,15 +236,12 @@ describe('Feature Tools Integration Tests', () => {
         .patch('/features/nonexistent-feature')
         .reply(404, { message: 'Feature not found' });
 
-      const result = await updateTool.execute({
-        id: 'nonexistent-feature',
-        name: 'Updated Name',
-      });
-
-      expect(result).toMatchObject({
-        success: false,
-        error: expect.stringContaining('Feature not found'),
-      });
+      await expect(
+        updateTool.execute({
+          id: 'nonexistent-feature',
+          name: 'Updated Name',
+        })
+      ).rejects.toThrow(ToolExecutionError);
       expect(scope.isDone()).toBe(true);
     });
   });
@@ -267,8 +254,9 @@ describe('Feature Tools Integration Tests', () => {
         .reply(200, { success: true, data: { ...validFeature, status: 'archived' } });
 
       const result = await deleteTool.execute({ id: 'feature-123' });
+      const parsed = parseResult(result);
 
-      expect(result).toMatchObject({
+      expect(parsed).toMatchObject({
         success: true,
       });
       expect(scope.isDone()).toBe(true);
@@ -279,14 +267,11 @@ describe('Feature Tools Integration Tests', () => {
         .patch('/features/nonexistent-feature', { status: 'archived' })
         .reply(404, { message: 'Feature not found' });
 
-      const result = await deleteTool.execute({
-        id: 'nonexistent-feature',
-      });
-
-      expect(result).toMatchObject({
-        success: false,
-        error: expect.stringContaining('Feature not found'),
-      });
+      await expect(
+        deleteTool.execute({
+          id: 'nonexistent-feature',
+        })
+      ).rejects.toThrow(ToolExecutionError);
       expect(scope.isDone()).toBe(true);
     });
   });
@@ -298,7 +283,7 @@ describe('Feature Tools Integration Tests', () => {
         .post('/features', createFeatureInput)
         .reply(201, { success: true, data: validFeature });
 
-      const createResult = await createTool.execute(createFeatureInput);
+      const createResult = parseResult(await createTool.execute(createFeatureInput));
       expect(createResult).toMatchObject({ success: true });
       expect(createScope.isDone()).toBe(true);
 
@@ -309,11 +294,7 @@ describe('Feature Tools Integration Tests', () => {
         .reply(200, listFeaturesResponse);
 
       const listResult = await listTool.execute({});
-      expect(listResult).toMatchObject({
-        data: expect.arrayContaining([
-          expect.objectContaining({ id: 'feature-123' }),
-        ]),
-      });
+      expect(listResult.content[0].text).toContain('Test Feature');
       expect(listScope.isDone()).toBe(true);
 
       // 3. Update feature
@@ -324,10 +305,10 @@ describe('Feature Tools Integration Tests', () => {
           data: { ...validFeature, status: 'in_progress' },
         });
 
-      const updateResult = await updateTool.execute({
+      const updateResult = parseResult(await updateTool.execute({
         id: 'feature-123',
         status: 'in_progress' as const,
-      });
+      }));
       expect(updateResult).toMatchObject({ success: true });
       expect(updateScope.isDone()).toBe(true);
 
@@ -336,7 +317,7 @@ describe('Feature Tools Integration Tests', () => {
         .patch('/features/feature-123', { status: 'archived' })
         .reply(200, { success: true, data: { ...validFeature, status: 'archived' } });
 
-      const deleteResult = await deleteTool.execute({ id: 'feature-123' });
+      const deleteResult = parseResult(await deleteTool.execute({ id: 'feature-123' }));
       expect(deleteResult).toMatchObject({ success: true });
       expect(deleteScope.isDone()).toBe(true);
     });

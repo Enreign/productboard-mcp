@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface UserEngagementParams {
   user_id?: string;
@@ -58,34 +57,25 @@ export class UserEngagementTool extends BaseTool<UserEngagementParams> {
     );
   }
 
-  protected async executeInternal(params: UserEngagementParams = {}): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Getting user engagement analytics');
+  protected async executeInternal(params: UserEngagementParams = {}): Promise<unknown> {
+    this.logger.info('Getting user engagement analytics');
 
-      const queryParams: Record<string, any> = {};
-      if (params.user_id) queryParams.user_id = params.user_id;
-      if (params.user_role) queryParams.user_role = params.user_role;
-      if (params.date_from) queryParams.date_from = params.date_from;
-      if (params.date_to) queryParams.date_to = params.date_to;
-      if (params.engagement_types?.length) queryParams.engagement_types = params.engagement_types.join(',');
+    const queryParams: Record<string, any> = {};
+    if (params.user_id) queryParams.user_id = params.user_id;
+    if (params.user_role) queryParams.user_role = params.user_role;
+    if (params.date_from) queryParams.date_from = params.date_from;
+    if (params.date_to) queryParams.date_to = params.date_to;
+    if (params.engagement_types?.length) queryParams.engagement_types = params.engagement_types.join(',');
 
-      const response = await this.apiClient.makeRequest({
-        method: 'GET',
-        endpoint: '/analytics/user-engagement',
-        params: queryParams,
-      });
+    const response = await this.apiClient.makeRequest({
+      method: 'GET',
+      endpoint: '/analytics/user-engagement',
+      params: queryParams,
+    });
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to get user engagement analytics', error);
-      
-      return {
-        success: false,
-        error: `Failed to get user engagement analytics: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

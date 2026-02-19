@@ -3,6 +3,13 @@ import { TestWebhookTool } from '@tools/webhooks/test-webhook';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
 describe('TestWebhookTool', () => {
   let tool: TestWebhookTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -132,7 +139,7 @@ describe('TestWebhookTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/webhooks/webhook_123456/test', {
         event_type: 'test',
@@ -162,7 +169,7 @@ describe('TestWebhookTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/webhooks/webhook_123456/test', {
         event_type: 'ping',
@@ -200,7 +207,7 @@ describe('TestWebhookTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/webhooks/webhook_123456/test', {
         event_type: 'feature.created',
@@ -230,7 +237,7 @@ describe('TestWebhookTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(result).toEqual({
         success: true,
@@ -258,7 +265,7 @@ describe('TestWebhookTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(result).toEqual({
         success: true,
@@ -271,15 +278,10 @@ describe('TestWebhookTool', () => {
         id: 'webhook_123456',
         test_event: 'test',
       };
-      
+
       mockClient.post.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to test webhook: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle webhook not found errors', async () => {
@@ -287,7 +289,7 @@ describe('TestWebhookTool', () => {
         id: 'webhook_nonexistent',
         test_event: 'test',
       };
-      
+
       const error = new Error('Webhook not found');
       (error as any).response = {
         status: 404,
@@ -300,12 +302,7 @@ describe('TestWebhookTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to test webhook: Webhook not found',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Webhook not found');
     });
 
     it('should handle authentication errors', async () => {
@@ -313,7 +310,7 @@ describe('TestWebhookTool', () => {
         id: 'webhook_123456',
         test_event: 'test',
       };
-      
+
       const error = new Error('Authentication failed');
       (error as any).response = {
         status: 401,
@@ -326,12 +323,7 @@ describe('TestWebhookTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to test webhook: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle forbidden errors (insufficient permissions)', async () => {
@@ -339,7 +331,7 @@ describe('TestWebhookTool', () => {
         id: 'webhook_123456',
         test_event: 'test',
       };
-      
+
       const error = new Error('Admin access required');
       (error as any).response = {
         status: 403,
@@ -352,12 +344,7 @@ describe('TestWebhookTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to test webhook: Admin access required',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Admin access required');
     });
 
     it('should handle inactive webhook errors', async () => {
@@ -365,7 +352,7 @@ describe('TestWebhookTool', () => {
         id: 'webhook_inactive',
         test_event: 'test',
       };
-      
+
       const error = new Error('Webhook is inactive');
       (error as any).response = {
         status: 400,
@@ -378,12 +365,7 @@ describe('TestWebhookTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to test webhook: Webhook is inactive',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Webhook is inactive');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -392,12 +374,8 @@ describe('TestWebhookTool', () => {
         id: 'webhook_123456',
         test_event: 'test',
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to test webhook:'),
-      });
+
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
 
     it('should use default test event when not specified', async () => {
@@ -438,20 +416,20 @@ describe('TestWebhookTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'webhook_123',
         test_event: 'test',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('webhook_id', 'webhook_123');
-      expect((result as any).data).toHaveProperty('delivery_id');
-      expect((result as any).data).toHaveProperty('status', 'delivered');
-      expect((result as any).data).toHaveProperty('response_code', 200);
-      expect((result as any).data).toHaveProperty('response_time_ms');
+      expect(result.data).toHaveProperty('webhook_id', 'webhook_123');
+      expect(result.data).toHaveProperty('delivery_id');
+      expect(result.data).toHaveProperty('status', 'delivered');
+      expect(result.data).toHaveProperty('response_code', 200);
+      expect(result.data).toHaveProperty('response_time_ms');
     });
 
     it('should transform failed test response correctly', async () => {
@@ -469,18 +447,18 @@ describe('TestWebhookTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'webhook_123',
         test_event: 'ping',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('status', 'failed');
-      expect((result as any).data).toHaveProperty('error', 'Connection timeout');
-      expect((result as any).data).toHaveProperty('failed_at');
+      expect(result.data).toHaveProperty('status', 'failed');
+      expect(result.data).toHaveProperty('error', 'Connection timeout');
+      expect(result.data).toHaveProperty('failed_at');
     });
 
     it('should handle test response with payload', async () => {
@@ -506,18 +484,18 @@ describe('TestWebhookTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'webhook_123',
         test_event: 'feature.created',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('payload');
-      expect((result as any).data.payload).toHaveProperty('event', 'feature.created');
-      expect((result as any).data.payload).toHaveProperty('data');
+      expect(result.data).toHaveProperty('payload');
+      expect(result.data.payload).toHaveProperty('event', 'feature.created');
+      expect(result.data.payload).toHaveProperty('data');
     });
 
     it('should handle different response codes correctly', async () => {
@@ -537,16 +515,16 @@ describe('TestWebhookTool', () => {
 
         mockClient.post.mockResolvedValueOnce(apiResponse);
 
-        const result = await tool.execute({
+        const result = parseResult(await tool.execute({
           id: 'webhook_123',
           test_event: 'test',
-        });
+        }));
 
         expect(result).toEqual({
           success: true,
           data: apiResponse,
         });
-        expect((result as any).data.response_code).toBe(code);
+        expect(result.data.response_code).toBe(code);
       }
     });
   });
@@ -570,18 +548,16 @@ describe('TestWebhookTool', () => {
       expect(mockLogger.info).toHaveBeenCalledWith('Testing webhook', { id: 'webhook_123456' });
     });
 
-    it('should log errors when test fails', async () => {
+    it('should throw error when test fails', async () => {
       const validInput = {
         id: 'webhook_123456',
         test_event: 'test',
       };
-      
+
       const error = new Error('Test error');
       mockClient.post.mockRejectedValueOnce(error);
 
-      await tool.execute(validInput);
-
-      expect(mockLogger.error).toHaveBeenCalledWith('Failed to test webhook', error);
+      await expect(tool.execute(validInput)).rejects.toThrow('Test error');
     });
   });
 });

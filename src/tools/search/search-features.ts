@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface SearchFeaturesParams {
   query: string;
@@ -117,66 +116,57 @@ export class SearchFeaturesTool extends BaseTool<SearchFeaturesParams> {
     );
   }
 
-  protected async executeInternal(params: SearchFeaturesParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Searching features', { query: params.query });
+  protected async executeInternal(params: SearchFeaturesParams): Promise<unknown> {
+    this.logger.info('Searching features', { query: params.query });
 
-      // Build query params for /features endpoint (no generic search, use filters)
-      const queryParams: Record<string, any> = {
-        limit: params.limit || 20,
-        offset: params.offset || 0,
-      };
+    // Build query params for /features endpoint (no generic search, use filters)
+    const queryParams: Record<string, any> = {
+      limit: params.limit || 20,
+      offset: params.offset || 0,
+    };
 
-      // Map sort options to what /features endpoint supports
-      if (params.sort === 'created_at' || params.sort === 'updated_at') {
-        queryParams.sort = params.sort;
-        queryParams.order = params.order || 'desc';
-      }
+    // Map sort options to what /features endpoint supports
+    if (params.sort === 'created_at' || params.sort === 'updated_at') {
+      queryParams.sort = params.sort;
+      queryParams.order = params.order || 'desc';
+    }
 
-      if (params.filters) {
-        if (params.filters.status?.length) queryParams.status = params.filters.status.join(',');
-        if (params.filters.product_ids?.length) queryParams.product_ids = params.filters.product_ids.join(',');
-        if (params.filters.owner_emails?.length) queryParams.owner_emails = params.filters.owner_emails.join(',');
-        if (params.filters.tags?.length) queryParams.tags = params.filters.tags.join(',');
-        if (params.filters.created_after) queryParams.created_after = params.filters.created_after;
-        if (params.filters.created_before) queryParams.created_before = params.filters.created_before;
-        if (params.filters.updated_after) queryParams.updated_after = params.filters.updated_after;
-        if (params.filters.updated_before) queryParams.updated_before = params.filters.updated_before;
-      }
+    if (params.filters) {
+      if (params.filters.status?.length) queryParams.status = params.filters.status.join(',');
+      if (params.filters.product_ids?.length) queryParams.product_ids = params.filters.product_ids.join(',');
+      if (params.filters.owner_emails?.length) queryParams.owner_emails = params.filters.owner_emails.join(',');
+      if (params.filters.tags?.length) queryParams.tags = params.filters.tags.join(',');
+      if (params.filters.created_after) queryParams.created_after = params.filters.created_after;
+      if (params.filters.created_before) queryParams.created_before = params.filters.created_before;
+      if (params.filters.updated_after) queryParams.updated_after = params.filters.updated_after;
+      if (params.filters.updated_before) queryParams.updated_before = params.filters.updated_before;
+    }
 
-      // Productboard API doesn't have a dedicated search endpoint
-      // Use the features endpoint with filtering instead
-      const response = await this.apiClient.makeRequest<any>({
-        method: 'GET',
-        endpoint: '/features',
-        params: queryParams,
-      });
+    // Productboard API doesn't have a dedicated search endpoint
+    // Use the features endpoint with filtering instead
+    const response = await this.apiClient.makeRequest<any>({
+      method: 'GET',
+      endpoint: '/features',
+      params: queryParams,
+    });
 
-      // If query is provided, filter results client-side
-      let filteredData = response;
-      if (params.query && params.query !== '*' && response?.data && Array.isArray(response.data)) {
-        const query = params.query.toLowerCase();
-        filteredData = {
-          ...response,
-          data: response.data.filter((feature: any) =>
-            feature.name?.toLowerCase().includes(query) ||
-            feature.description?.toLowerCase().includes(query) ||
-            feature.tags?.some((tag: any) => tag.name?.toLowerCase().includes(query))
-          )
-        };
-      }
-
-      return {
-        success: true,
-        data: filteredData,
-      };
-    } catch (error) {
-      this.logger.error('Failed to search features', error);
-
-      return {
-        success: false,
-        error: `Failed to search features: ${(error as Error).message}`,
+    // If query is provided, filter results client-side
+    let filteredData = response;
+    if (params.query && params.query !== '*' && response?.data && Array.isArray(response.data)) {
+      const query = params.query.toLowerCase();
+      filteredData = {
+        ...response,
+        data: response.data.filter((feature: any) =>
+          feature.name?.toLowerCase().includes(query) ||
+          feature.description?.toLowerCase().includes(query) ||
+          feature.tags?.some((tag: any) => tag.name?.toLowerCase().includes(query))
+        )
       };
     }
+
+    return {
+      success: true,
+      data: filteredData,
+    };
   }
 }

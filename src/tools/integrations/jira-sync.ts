@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface JiraSyncParams {
   action: 'import' | 'export' | 'sync';
@@ -104,35 +103,26 @@ export class JiraSyncTool extends BaseTool<JiraSyncParams> {
     );
   }
 
-  protected async executeInternal(params: JiraSyncParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Syncing with JIRA', { action: params.action });
+  protected async executeInternal(params: JiraSyncParams): Promise<unknown> {
+    this.logger.info('Syncing with JIRA', { action: params.action });
 
-      const requestData: any = {
-        action: params.action,
-        options: params.sync_options || {
-          sync_status: true,
-          sync_priority: true,
-        },
-      };
+    const requestData: any = {
+      action: params.action,
+      options: params.sync_options || {
+        sync_status: true,
+        sync_priority: true,
+      },
+    };
 
-      if (params.jira_project_key) requestData.jira_project_key = params.jira_project_key;
-      if (params.feature_ids?.length) requestData.feature_ids = params.feature_ids;
-      if (params.mapping) requestData.mapping = params.mapping;
+    if (params.jira_project_key) requestData.jira_project_key = params.jira_project_key;
+    if (params.feature_ids?.length) requestData.feature_ids = params.feature_ids;
+    if (params.mapping) requestData.mapping = params.mapping;
 
-      const response = await this.apiClient.post('/integrations/jira/sync', requestData);
+    const response = await this.apiClient.post('/integrations/jira/sync', requestData);
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to sync with JIRA', error);
-      
-      return {
-        success: false,
-        error: `Failed to sync with JIRA: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

@@ -2,6 +2,14 @@ import { ListCompaniesTool } from '@tools/companies/list-companies';
 import { ProductboardAPIClient } from '@api/index';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('ListCompaniesTool', () => {
   let tool: ListCompaniesTool;
   let mockApiClient: jest.Mocked<ProductboardAPIClient>;
@@ -76,7 +84,7 @@ describe('ListCompaniesTool', () => {
         links: {},
       });
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -103,7 +111,7 @@ describe('ListCompaniesTool', () => {
         links: {},
       });
 
-      const result = await tool.execute({ search: 'Acme' });
+      const result = parseResult(await tool.execute({ search: 'Acme' }));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -111,8 +119,8 @@ describe('ListCompaniesTool', () => {
         params: { search: 'Acme' },
       });
 
-      expect((result as any).data.companies).toHaveLength(1);
-      expect((result as any).data.companies[0].name).toContain('Acme');
+      expect(result.data.companies).toHaveLength(1);
+      expect(result.data.companies[0].name).toContain('Acme');
     });
 
     it('should filter by company size', async () => {
@@ -123,7 +131,7 @@ describe('ListCompaniesTool', () => {
         links: {},
       });
 
-      const result = await tool.execute({ size: 'small' });
+      const result = parseResult(await tool.execute({ size: 'small' }));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -131,8 +139,8 @@ describe('ListCompaniesTool', () => {
         params: { size: 'small' },
       });
 
-      expect((result as any).data.companies).toHaveLength(1);
-      expect((result as any).data.companies[0].size).toBe('small');
+      expect(result.data.companies).toHaveLength(1);
+      expect(result.data.companies[0].size).toBe('small');
     });
 
     it('should filter by industry', async () => {
@@ -143,7 +151,7 @@ describe('ListCompaniesTool', () => {
         links: {},
       });
 
-      const result = await tool.execute({ industry: 'Technology' });
+      const result = parseResult(await tool.execute({ industry: 'Technology' }));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -151,7 +159,7 @@ describe('ListCompaniesTool', () => {
         params: { industry: 'Technology' },
       });
 
-      expect((result as any).data.companies[0].industry).toBe('Technology');
+      expect(result.data.companies[0].industry).toBe('Technology');
     });
 
     it('should combine multiple filters', async () => {
@@ -197,9 +205,9 @@ describe('ListCompaniesTool', () => {
         links: {},
       });
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
-      expect((result as any).data.companies[0]).toHaveProperty('metadata');
+      expect(result.data.companies[0]).toHaveProperty('metadata');
     });
 
     it('should handle empty results', async () => {
@@ -208,7 +216,7 @@ describe('ListCompaniesTool', () => {
         links: {},
       });
 
-      const result = await tool.execute({ industry: 'Non-existent' });
+      const result = parseResult(await tool.execute({ industry: 'Non-existent' }));
 
       expect(result).toEqual({
         success: true,

@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface SearchNotesParams {
   query: string;
@@ -111,45 +110,36 @@ export class SearchNotesTool extends BaseTool<SearchNotesParams> {
     );
   }
 
-  protected async executeInternal(params: SearchNotesParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Searching notes', { query: params.query });
+  protected async executeInternal(params: SearchNotesParams): Promise<unknown> {
+    this.logger.info('Searching notes', { query: params.query });
 
-      const queryParams: Record<string, any> = {
-        q: params.query,
-        sort: params.sort || 'relevance',
-        order: params.order || 'desc',
-        limit: params.limit || 20,
-        offset: params.offset || 0,
-      };
+    const queryParams: Record<string, any> = {
+      q: params.query,
+      sort: params.sort || 'relevance',
+      order: params.order || 'desc',
+      limit: params.limit || 20,
+      offset: params.offset || 0,
+    };
 
-      if (params.filters) {
-        if (params.filters.customer_emails?.length) queryParams.customer_emails = params.filters.customer_emails.join(',');
-        if (params.filters.company_names?.length) queryParams.company_names = params.filters.company_names.join(',');
-        if (params.filters.tags?.length) queryParams.tags = params.filters.tags.join(',');
-        if (params.filters.source?.length) queryParams.source = params.filters.source.join(',');
-        if (params.filters.created_after) queryParams.created_after = params.filters.created_after;
-        if (params.filters.created_before) queryParams.created_before = params.filters.created_before;
-        if (params.filters.feature_ids?.length) queryParams.feature_ids = params.filters.feature_ids.join(',');
-      }
-
-      const response = await this.apiClient.makeRequest({
-        method: 'GET',
-        endpoint: '/search/notes',
-        params: queryParams,
-      });
-
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to search notes', error);
-      
-      return {
-        success: false,
-        error: `Failed to search notes: ${(error as Error).message}`,
-      };
+    if (params.filters) {
+      if (params.filters.customer_emails?.length) queryParams.customer_emails = params.filters.customer_emails.join(',');
+      if (params.filters.company_names?.length) queryParams.company_names = params.filters.company_names.join(',');
+      if (params.filters.tags?.length) queryParams.tags = params.filters.tags.join(',');
+      if (params.filters.source?.length) queryParams.source = params.filters.source.join(',');
+      if (params.filters.created_after) queryParams.created_after = params.filters.created_after;
+      if (params.filters.created_before) queryParams.created_before = params.filters.created_before;
+      if (params.filters.feature_ids?.length) queryParams.feature_ids = params.filters.feature_ids.join(',');
     }
+
+    const response = await this.apiClient.makeRequest({
+      method: 'GET',
+      endpoint: '/search/notes',
+      params: queryParams,
+    });
+
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

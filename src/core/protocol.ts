@@ -3,8 +3,8 @@ import {
   MCPResponse,
   MCPError,
   ProtocolHandler,
-  ValidationResult,
 } from './types.js';
+import { ValidationResult } from '@middleware/types.js';
 import { ToolRegistry } from './registry.js';
 import { Validator } from '@middleware/validator.js';
 import { ProtocolError, ToolExecutionError } from '@utils/errors.js';
@@ -52,35 +52,35 @@ export class MCPProtocolHandler implements ProtocolHandler {
   }
 
   validateRequest(request: MCPRequest): ValidationResult {
-    const errors: string[] = [];
-    
+    const errors: { path: string; message: string }[] = [];
+
     if (!request.id) {
-      errors.push('Request id is required');
+      errors.push({ path: '', message: 'Request id is required' });
     }
-    
+
     if (!request.method) {
-      errors.push('Request method is required');
+      errors.push({ path: '', message: 'Request method is required' });
     } else if (request.method.startsWith('pb_')) {
       if (!this.toolRegistry.hasTool(request.method)) {
-        errors.push(`Tool not found: ${request.method}`);
+        errors.push({ path: '', message: `Tool not found: ${request.method}` });
       } else if (request.params) {
         const schema = this.toolRegistry.getToolSchema(request.method);
         const validationResult = this.validator.validateSchema(request.params, schema);
         if (!validationResult.valid) {
-          errors.push(...validationResult.errors.map(e => e.message));
+          errors.push(...validationResult.errors);
         }
       }
     } else {
       // Handle standard MCP methods
       const supportedMethods = this.getSupportedMethods();
       if (!supportedMethods.includes(request.method)) {
-        errors.push(`Method not found: ${request.method}`);
+        errors.push({ path: '', message: `Method not found: ${request.method}` });
       }
     }
-    
+
     return {
       valid: errors.length === 0,
-      errors: errors.length > 0 ? errors : undefined,
+      errors,
     };
   }
 

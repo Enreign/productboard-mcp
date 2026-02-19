@@ -2,6 +2,14 @@ import { CreateNoteTool } from '@tools/notes/create-note';
 import { ProductboardAPIClient } from '@api/index';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('CreateNoteTool', () => {
   let tool: CreateNoteTool;
   let mockApiClient: jest.Mocked<ProductboardAPIClient>;
@@ -94,7 +102,7 @@ describe('CreateNoteTool', () => {
     it('should create a note with minimal parameters', async () => {
       mockApiClient.post.mockResolvedValue(mockCreatedNote);
 
-      const result = await tool.execute(validParams);
+      const result = parseResult(await tool.execute(validParams));
 
       expect(mockApiClient.post).toHaveBeenCalledWith('/notes', validParams);
 
@@ -125,11 +133,11 @@ describe('CreateNoteTool', () => {
 
       mockApiClient.post.mockResolvedValue(mockFullNote);
 
-      const result = await tool.execute(fullParams);
+      const result = parseResult(await tool.execute(fullParams));
 
       expect(mockApiClient.post).toHaveBeenCalledWith('/notes', fullParams);
 
-      expect((result as any).data).toMatchObject(fullParams);
+      expect(result.data).toMatchObject(fullParams);
     });
 
     it('should validate required content parameter', async () => {
@@ -168,17 +176,7 @@ describe('CreateNoteTool', () => {
         new Error('One or more features not found')
       );
 
-      const result = await tool.execute(paramsWithFeatures);
-
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create note: One or more features not found',
-      });
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to create note',
-        expect.any(Error)
-      );
+      await expect(tool.execute(paramsWithFeatures)).rejects.toThrow('One or more features not found');
     });
 
     it('should handle duplicate customer error gracefully', async () => {
@@ -193,9 +191,9 @@ describe('CreateNoteTool', () => {
         ...paramsWithCustomer,
       });
 
-      const result = await tool.execute(paramsWithCustomer);
+      const result = parseResult(await tool.execute(paramsWithCustomer));
 
-      expect((result as any).success).toBe(true);
+      expect(result.success).toBe(true);
     });
   });
 });

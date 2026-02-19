@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface DeleteFeatureParams {
   id: string;
@@ -39,38 +38,30 @@ export class DeleteFeatureTool extends BaseTool<DeleteFeatureParams> {
     );
   }
 
-  protected async executeInternal(params: DeleteFeatureParams): Promise<ToolExecutionResult> {
-    try {
-      const { id, permanent = false } = params;
+  protected async executeInternal(params: DeleteFeatureParams): Promise<unknown> {
+    const { id, permanent = false } = params;
 
-      if (permanent) {
-        // Permanent deletion
-        await this.apiClient.delete(`/features/${id}`);
-        return {
-          success: true,
-          data: {
-            action: 'deleted',
-            feature_id: id,
-          },
-        };
-      } else {
-        // Archive by updating status
-        const feature = await this.apiClient.patch(`/features/${id}`, {
-          status: 'archived',
-        });
-        return {
-          success: true,
-          data: {
-            feature,
-            action: 'archived',
-          },
-        };
-      }
-    } catch (error) {
-      this.logger.error('Failed to delete feature', error);
+    if (permanent) {
+      // Permanent deletion
+      await this.apiClient.delete(`/features/${id}`);
       return {
-        success: false,
-        error: `Failed to delete feature: ${(error as Error).message}`,
+        success: true,
+        data: {
+          action: 'deleted',
+          feature_id: id,
+        },
+      };
+    } else {
+      // Archive by updating status
+      const feature = await this.apiClient.patch(`/features/${id}`, {
+        status: 'archived',
+      });
+      return {
+        success: true,
+        data: {
+          feature,
+          action: 'archived',
+        },
       };
     }
   }

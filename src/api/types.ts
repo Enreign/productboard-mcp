@@ -20,7 +20,7 @@ export interface PaginatedResponse<T> {
 }
 
 export interface BatchOperation {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   endpoint: string;
   data?: unknown;
   params?: QueryParams;

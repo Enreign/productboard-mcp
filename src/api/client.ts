@@ -23,6 +23,14 @@ import { Logger } from '@utils/logger.js';
 import { RetryHandler } from '@utils/retry.js';
 import { RateLimiter } from '@middleware/rateLimiter.js';
 
+export function extractResponseData<T = unknown>(response: unknown): T[] {
+  if (response && typeof response === 'object' && 'data' in response) {
+    const data = (response as { data: unknown }).data;
+    return Array.isArray(data) ? data as T[] : [];
+  }
+  return Array.isArray(response) ? response as T[] : [];
+}
+
 export class ProductboardAPIClient {
   private readonly axios: AxiosInstance;
   private readonly authManager: AuthenticationManager;
@@ -63,7 +71,7 @@ export class ProductboardAPIClient {
     this.axios.interceptors.request.use(
       async (config) => {
         const authHeaders = this.authManager.getAuthHeaders();
-        config.headers = { ...config.headers, ...authHeaders } as any;
+        Object.assign(config.headers!, authHeaders);
         
         await this.rateLimiter.waitForSlot('global');
         
@@ -176,10 +184,10 @@ export class ProductboardAPIClient {
     const allData: T[] = [];
     let cursor: string | undefined;
     let hasMore = true;
-    const limit = params?.limit || 100;
+    const limit = Number(params?.limit) || 100;
 
     while (hasMore) {
-      const paginatedParams = {
+      const paginatedParams: QueryParams = {
         ...params,
         limit,
         ...(cursor && { cursor }),
@@ -192,8 +200,9 @@ export class ProductboardAPIClient {
       cursor = response.pagination.cursor;
 
       if (!cursor && hasMore) {
-        const offset = ((response.pagination as any).offset || 0) + limit;
-        (paginatedParams as any).offset = offset;
+        const pagination = response.pagination as Record<string, string | number | boolean | undefined>;
+        const currentOffset = typeof pagination.offset === 'number' ? pagination.offset : 0;
+        paginatedParams.offset = currentOffset + limit;
       }
     }
 
@@ -216,6 +225,9 @@ export class ProductboardAPIClient {
             break;
           case 'PUT':
             data = await this.put(operation.endpoint, operation.data);
+            break;
+          case 'PATCH':
+            data = await this.patch(operation.endpoint, operation.data);
             break;
           case 'DELETE':
             await this.delete(operation.endpoint);

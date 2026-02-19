@@ -4,6 +4,14 @@ import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 // Error types are checked by message rather than type
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('ExportToJiraTool', () => {
   let tool: ExportToJiraTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -189,7 +197,7 @@ describe('ExportToJiraTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/integrations/jira/export', {
         feature_ids: ['feat_123', 'feat_456'],
@@ -244,7 +252,7 @@ describe('ExportToJiraTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/integrations/jira/export', {
         feature_ids: ['feat_123'],
@@ -275,16 +283,7 @@ describe('ExportToJiraTool', () => {
       
       mockClient.post.mockRejectedValueOnce(new Error('JIRA API connection failed'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to export to JIRA: JIRA API connection failed',
-      });
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to export to JIRA',
-        expect.any(Error)
-      );
+      await expect(tool.execute(validInput)).rejects.toThrow('JIRA API connection failed');
     });
 
     it('should handle authentication errors', async () => {
@@ -305,12 +304,7 @@ describe('ExportToJiraTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to export to JIRA: JIRA authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('JIRA authentication failed');
     });
 
     it('should handle JIRA project not found errors', async () => {
@@ -331,12 +325,7 @@ describe('ExportToJiraTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to export to JIRA: JIRA project not found',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('JIRA project not found');
     });
 
     it('should handle partial export failures', async () => {
@@ -372,7 +361,7 @@ describe('ExportToJiraTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(result).toEqual({
         success: true,
@@ -386,12 +375,7 @@ describe('ExportToJiraTool', () => {
         feature_ids: ['feat_123'],
         jira_project_key: 'MYPROJECT',
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to export to JIRA:'),
-      });
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
 
     it('should set default issue_type to "Story" if not provided', async () => {
@@ -475,10 +459,10 @@ describe('ExportToJiraTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         feature_ids: ['feat_123'],
         jira_project_key: 'PROJ',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
@@ -505,10 +489,10 @@ describe('ExportToJiraTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         feature_ids: ['feat_invalid'],
         jira_project_key: 'PROJ',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,

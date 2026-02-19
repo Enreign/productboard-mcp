@@ -3,6 +3,14 @@ import { UpdateReleaseTool } from '@tools/releases/update-release';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('UpdateReleaseTool', () => {
   let tool: UpdateReleaseTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -138,7 +146,7 @@ describe('UpdateReleaseTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/releases/rel_123', {
         name: 'v1.0.1',
@@ -166,10 +174,10 @@ describe('UpdateReleaseTool', () => {
         created_at: '2024-01-10T10:00:00Z',
         updated_at: '2024-01-15T14:30:00Z',
       };
-      
+
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(partialInput);
+      const result = parseResult(await tool.execute(partialInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/releases/rel_123', {
         name: 'v1.0.1',
@@ -186,7 +194,7 @@ describe('UpdateReleaseTool', () => {
         id: 'rel_123',
       };
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(result).toEqual({
         success: false,
@@ -199,15 +207,10 @@ describe('UpdateReleaseTool', () => {
         id: 'rel_123',
         name: 'v1.0.1',
       };
-      
+
       mockClient.put.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update release: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -215,7 +218,7 @@ describe('UpdateReleaseTool', () => {
         id: 'rel_123',
         name: 'v1.0.1',
       };
-      
+
       const error = new Error('Authentication failed');
       (error as any).response = {
         status: 401,
@@ -228,12 +231,7 @@ describe('UpdateReleaseTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update release: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle validation errors from API', async () => {
@@ -241,7 +239,7 @@ describe('UpdateReleaseTool', () => {
         id: 'rel_123',
         name: 'v1.0.1',
       };
-      
+
       const error = new Error('Validation error');
       (error as any).response = {
         status: 400,
@@ -259,12 +257,7 @@ describe('UpdateReleaseTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update release: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should handle not found errors', async () => {
@@ -272,7 +265,7 @@ describe('UpdateReleaseTool', () => {
         id: 'rel_nonexistent',
         name: 'v1.0.1',
       };
-      
+
       const error = new Error('Not found');
       (error as any).response = {
         status: 404,
@@ -285,12 +278,7 @@ describe('UpdateReleaseTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update release: Not found',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Not found');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -299,12 +287,8 @@ describe('UpdateReleaseTool', () => {
         id: 'rel_123',
         name: 'v1.0.1',
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to update release:'),
-      });
+
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
   });
 
@@ -321,18 +305,18 @@ describe('UpdateReleaseTool', () => {
 
       mockClient.put.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'rel_123',
         name: 'v1.0.1',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('id', 'rel_123');
-      expect((result as any).data).toHaveProperty('name', 'v1.0.1');
-      expect((result as any).data).toHaveProperty('updated_at');
+      expect(result.data).toHaveProperty('id', 'rel_123');
+      expect(result.data).toHaveProperty('name', 'v1.0.1');
+      expect(result.data).toHaveProperty('updated_at');
     });
   });
 });

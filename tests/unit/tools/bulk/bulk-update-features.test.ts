@@ -2,6 +2,14 @@ import { BulkUpdateFeaturesTool } from '@tools/bulk/bulk-update-features';
 import { ProductboardAPIClient } from '@api/index';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('BulkUpdateFeaturesTool', () => {
   let tool: BulkUpdateFeaturesTool;
   let mockApiClient: jest.Mocked<ProductboardAPIClient>;
@@ -87,7 +95,7 @@ describe('BulkUpdateFeaturesTool', () => {
         links: {},
       });
 
-      const result = await tool.execute(validParams);
+      const result = parseResult(await tool.execute(validParams));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'PATCH',
@@ -134,7 +142,7 @@ describe('BulkUpdateFeaturesTool', () => {
         links: {},
       });
 
-      const result = await tool.execute(multiFieldParams);
+      const result = parseResult(await tool.execute(multiFieldParams));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'PATCH',
@@ -142,7 +150,7 @@ describe('BulkUpdateFeaturesTool', () => {
         data: multiFieldParams,
       });
 
-      expect((result as any).data.data.updated).toBe(2);
+      expect(result.data.data.updated).toBe(2);
     });
 
     it('should handle partial failures', async () => {
@@ -161,7 +169,7 @@ describe('BulkUpdateFeaturesTool', () => {
         links: {},
       });
 
-      const result = await tool.execute(validParams);
+      const result = parseResult(await tool.execute(validParams));
 
       expect(result).toEqual({
         success: true,

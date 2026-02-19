@@ -3,6 +3,13 @@ import { DeleteWebhookTool } from '@tools/webhooks/delete-webhook';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
 describe('DeleteWebhookTool', () => {
   let tool: DeleteWebhookTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -95,7 +102,7 @@ describe('DeleteWebhookTool', () => {
       // Delete endpoint typically returns void, but our tool returns a success message
       mockClient.delete.mockResolvedValueOnce(undefined);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.delete).toHaveBeenCalledWith('/webhooks/webhook_123456');
       expect(result).toEqual({
@@ -114,7 +121,7 @@ describe('DeleteWebhookTool', () => {
       
       mockClient.delete.mockResolvedValueOnce(undefined);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockLogger.info).toHaveBeenCalledWith('Deleting webhook', { id: 'webhook_abc789' });
       expect(mockClient.delete).toHaveBeenCalledWith('/webhooks/webhook_abc789');
@@ -131,22 +138,17 @@ describe('DeleteWebhookTool', () => {
       const validInput = {
         id: 'webhook_123456',
       };
-      
+
       mockClient.delete.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to delete webhook: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle webhook not found errors', async () => {
       const validInput = {
         id: 'webhook_nonexistent',
       };
-      
+
       const error = new Error('Webhook not found');
       (error as any).response = {
         status: 404,
@@ -159,19 +161,14 @@ describe('DeleteWebhookTool', () => {
       };
       mockClient.delete.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to delete webhook: Webhook not found',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Webhook not found');
     });
 
     it('should handle authentication errors', async () => {
       const validInput = {
         id: 'webhook_123456',
       };
-      
+
       const error = new Error('Authentication failed');
       (error as any).response = {
         status: 401,
@@ -184,19 +181,14 @@ describe('DeleteWebhookTool', () => {
       };
       mockClient.delete.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to delete webhook: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle forbidden errors (insufficient permissions)', async () => {
       const validInput = {
         id: 'webhook_123456',
       };
-      
+
       const error = new Error('Admin access required');
       (error as any).response = {
         status: 403,
@@ -209,19 +201,14 @@ describe('DeleteWebhookTool', () => {
       };
       mockClient.delete.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to delete webhook: Admin access required',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Admin access required');
     });
 
     it('should handle conflict errors (webhook in use)', async () => {
       const validInput = {
         id: 'webhook_123456',
       };
-      
+
       const error = new Error('Webhook is currently in use');
       (error as any).response = {
         status: 409,
@@ -236,19 +223,14 @@ describe('DeleteWebhookTool', () => {
       };
       mockClient.delete.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to delete webhook: Webhook is currently in use',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Webhook is currently in use');
     });
 
     it('should handle server errors', async () => {
       const validInput = {
         id: 'webhook_123456',
       };
-      
+
       const error = new Error('Internal server error');
       (error as any).response = {
         status: 500,
@@ -261,28 +243,18 @@ describe('DeleteWebhookTool', () => {
       };
       mockClient.delete.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to delete webhook: Internal server error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Internal server error');
     });
 
     it('should handle network errors', async () => {
       const validInput = {
         id: 'webhook_123456',
       };
-      
+
       const networkError = new Error('Network timeout');
       mockClient.delete.mockRejectedValueOnce(networkError);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to delete webhook: Network timeout',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Network timeout');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -290,12 +262,8 @@ describe('DeleteWebhookTool', () => {
       const validInput = {
         id: 'webhook_123456',
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to delete webhook:'),
-      });
+
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
 
     it('should handle deletion of different webhook types', async () => {
@@ -309,7 +277,7 @@ describe('DeleteWebhookTool', () => {
       for (const id of webhookIds) {
         mockClient.delete.mockResolvedValueOnce(undefined);
 
-        const result = await tool.execute({ id });
+        const result = parseResult(await tool.execute({ id }));
 
         expect(mockClient.delete).toHaveBeenCalledWith(`/webhooks/${id}`);
         expect(result).toEqual({
@@ -329,9 +297,9 @@ describe('DeleteWebhookTool', () => {
     it('should transform deletion response correctly', async () => {
       mockClient.delete.mockResolvedValueOnce(undefined);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'webhook_123',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
@@ -340,17 +308,17 @@ describe('DeleteWebhookTool', () => {
           id: 'webhook_123',
         },
       });
-      expect((result as any).data).toHaveProperty('message');
-      expect((result as any).data).toHaveProperty('id', 'webhook_123');
+      expect(result.data).toHaveProperty('message');
+      expect(result.data).toHaveProperty('id', 'webhook_123');
     });
 
     it('should handle successful deletion without response data', async () => {
       // Some APIs return null or undefined on successful deletion
       mockClient.delete.mockResolvedValueOnce(undefined);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'webhook_456',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
@@ -365,9 +333,9 @@ describe('DeleteWebhookTool', () => {
       // Most delete APIs return void
       mockClient.delete.mockResolvedValueOnce(undefined);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'webhook_789',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
@@ -382,9 +350,9 @@ describe('DeleteWebhookTool', () => {
       // Delete operations should consistently return void
       mockClient.delete.mockResolvedValueOnce(undefined);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'webhook_abc',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
@@ -397,24 +365,22 @@ describe('DeleteWebhookTool', () => {
   });
 
   describe('error logging', () => {
-    it('should log errors when deletion fails', async () => {
+    it('should throw error when deletion fails', async () => {
       const validInput = {
         id: 'webhook_123456',
       };
-      
+
       const error = new Error('Test error');
       mockClient.delete.mockRejectedValueOnce(error);
 
-      await tool.execute(validInput);
-
-      expect(mockLogger.error).toHaveBeenCalledWith('Failed to delete webhook', error);
+      await expect(tool.execute(validInput)).rejects.toThrow('Test error');
     });
 
     it('should log info when starting deletion', async () => {
       const validInput = {
         id: 'webhook_123456',
       };
-      
+
       mockClient.delete.mockResolvedValueOnce(undefined);
 
       await tool.execute(validInput);

@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface ReleaseStatusUpdateParams {
   id: string;
@@ -50,38 +49,29 @@ export class ReleaseStatusUpdateTool extends BaseTool<ReleaseStatusUpdateParams>
     );
   }
 
-  protected async executeInternal(params: ReleaseStatusUpdateParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Updating release status', { 
-        id: params.id,
-        status: params.status 
-      });
+  protected async executeInternal(params: ReleaseStatusUpdateParams): Promise<unknown> {
+    this.logger.info('Updating release status', {
+      id: params.id,
+      status: params.status
+    });
 
-      // Validate release notes for released status
-      if (params.status === 'released' && !params.release_notes) {
-        return {
-          success: false,
-          error: 'Release notes are required when status is "released"',
-        };
-      }
-
-      const response = await this.apiClient.patch(`/releases/${params.id}/status`, {
-        status: params.status,
-        release_notes: params.release_notes,
-        actual_date: params.actual_date,
-      });
-
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to update release status', error);
-      
+    // Validate release notes for released status
+    if (params.status === 'released' && !params.release_notes) {
       return {
         success: false,
-        error: `Failed to update release status: ${(error as Error).message}`,
+        error: 'Release notes are required when status is "released"',
       };
     }
+
+    const response = await this.apiClient.patch(`/releases/${params.id}/status`, {
+      status: params.status,
+      release_notes: params.release_notes,
+      actual_date: params.actual_date,
+    });
+
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

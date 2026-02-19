@@ -2,6 +2,14 @@ import { CreateProductTool } from '@tools/products/create-product';
 import { ProductboardAPIClient } from '@api/index';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('CreateProductTool', () => {
   let tool: CreateProductTool;
   let mockApiClient: jest.Mocked<ProductboardAPIClient>;
@@ -78,7 +86,7 @@ describe('CreateProductTool', () => {
     it('should create a product successfully', async () => {
       mockApiClient.post.mockResolvedValue(mockCreatedProduct);
 
-      const result = await tool.execute(validParams);
+      const result = parseResult(await tool.execute(validParams));
 
       expect(mockApiClient.post).toHaveBeenCalledWith('/products', validParams);
 
@@ -106,11 +114,11 @@ describe('CreateProductTool', () => {
 
       mockApiClient.post.mockResolvedValue(mockSubProduct);
 
-      const result = await tool.execute(subProductParams);
+      const result = parseResult(await tool.execute(subProductParams));
 
       expect(mockApiClient.post).toHaveBeenCalledWith('/products', subProductParams);
 
-      expect((result as any).data.parent_id).toBe('prod-parent');
+      expect(result.data.parent_id).toBe('prod-parent');
     });
 
     it('should create a product with owner email', async () => {
@@ -126,11 +134,11 @@ describe('CreateProductTool', () => {
 
       mockApiClient.post.mockResolvedValue(mockProductWithOwner);
 
-      const result = await tool.execute(paramsWithOwner);
+      const result = parseResult(await tool.execute(paramsWithOwner));
 
       expect(mockApiClient.post).toHaveBeenCalledWith('/products', paramsWithOwner);
 
-      expect((result as any).data.owner_email).toBe('owner@example.com');
+      expect(result.data.owner_email).toBe('owner@example.com');
     });
 
     it('should validate required name parameter', async () => {

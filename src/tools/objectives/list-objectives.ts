@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface ListObjectivesParams {
   status?: 'active' | 'completed' | 'cancelled';
@@ -60,34 +59,25 @@ export class ListObjectivesTool extends BaseTool<ListObjectivesParams> {
     );
   }
 
-  protected async executeInternal(params: ListObjectivesParams = {}): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Listing objectives');
+  protected async executeInternal(params: ListObjectivesParams = {}): Promise<unknown> {
+    this.logger.info('Listing objectives');
 
-      const queryParams: Record<string, any> = {};
-      if (params.status) queryParams.status = params.status;
-      if (params.owner_email) queryParams.owner_email = params.owner_email;
-      if (params.period) queryParams.period = params.period;
-      if (params.limit) queryParams.limit = params.limit;
-      if (params.offset) queryParams.offset = params.offset;
+    const queryParams: Record<string, any> = {};
+    if (params.status) queryParams.status = params.status;
+    if (params.owner_email) queryParams.owner_email = params.owner_email;
+    if (params.period) queryParams.period = params.period;
+    if (params.limit) queryParams.limit = params.limit;
+    if (params.offset) queryParams.offset = params.offset;
 
-      const response = await this.apiClient.makeRequest({
-        method: 'GET',
-        endpoint: '/objectives',
-        params: queryParams,
-      });
+    const response = await this.apiClient.makeRequest({
+      method: 'GET',
+      endpoint: '/objectives',
+      params: queryParams,
+    });
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to list objectives', error);
-      
-      return {
-        success: false,
-        error: `Failed to list objectives: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

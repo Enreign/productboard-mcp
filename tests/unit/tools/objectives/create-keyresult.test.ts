@@ -3,6 +3,14 @@ import { CreateKeyResultTool } from '@tools/objectives/create-keyresult';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('CreateKeyResultTool', () => {
   let tool: CreateKeyResultTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -154,7 +162,7 @@ describe('CreateKeyResultTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/keyresults', validInput);
       expect(result).toEqual({
@@ -182,7 +190,7 @@ describe('CreateKeyResultTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(minimalInput);
+      const result = parseResult(await tool.execute(minimalInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/keyresults', minimalInput);
       expect(result).toEqual({
@@ -215,7 +223,7 @@ describe('CreateKeyResultTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/keyresults', validInput);
       expect(result).toEqual({
@@ -248,7 +256,7 @@ describe('CreateKeyResultTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/keyresults', validInput);
       expect(result).toEqual({
@@ -266,12 +274,7 @@ describe('CreateKeyResultTool', () => {
       
       mockClient.post.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create key result: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle invalid objective_id errors', async () => {
@@ -293,12 +296,7 @@ describe('CreateKeyResultTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create key result: Objective not found',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Objective not found');
     });
 
     it('should handle authentication errors', async () => {
@@ -320,12 +318,7 @@ describe('CreateKeyResultTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create key result: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle validation errors from API', async () => {
@@ -351,12 +344,7 @@ describe('CreateKeyResultTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create key result: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -366,12 +354,7 @@ describe('CreateKeyResultTool', () => {
         name: 'Increase Daily Active Users',
         target_value: 10000,
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to create key result:'),
-      });
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
   });
 
@@ -391,11 +374,11 @@ describe('CreateKeyResultTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         objective_id: 'obj_456',
         name: 'Test Key Result',
         target_value: 100,
-      });
+      }));
 
       expect(result).toEqual({
         success: true,

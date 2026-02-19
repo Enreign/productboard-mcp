@@ -1,7 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient, extractResponseData } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface ListFeaturesParams {
   status?: 'new' | 'in_progress' | 'validation' | 'done' | 'archived';
@@ -103,14 +103,8 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
 
     // Note: Productboard API /features endpoint does not support limit, offset, sort, order parameters
     const response = await this.apiClient.get('/features', queryParams);
-    
-    // Extract feature data
-    let features: any[] = [];
-    if (response && (response as any).data) {
-      features = (response as any).data;
-    } else if (Array.isArray(response)) {
-      features = response;
-    }
+
+    const features = extractResponseData(response);
     
     // Apply client-side pagination if requested
     const requestedLimit = params.limit || 20;

@@ -3,6 +3,14 @@ import { CreateCustomFieldTool } from '@tools/customfields/create-field';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('CreateCustomFieldTool', () => {
   let tool: CreateCustomFieldTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -146,7 +154,7 @@ describe('CreateCustomFieldTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/customfields', validInput);
       expect(result).toEqual({
@@ -175,7 +183,7 @@ describe('CreateCustomFieldTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/customfields', validInput);
       expect(result).toEqual({
@@ -207,7 +215,7 @@ describe('CreateCustomFieldTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/customfields', validInput);
       expect(result).toEqual({
@@ -238,7 +246,7 @@ describe('CreateCustomFieldTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/customfields', validInput);
       expect(result).toEqual({
@@ -267,7 +275,7 @@ describe('CreateCustomFieldTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(result).toEqual({
         success: true,
@@ -295,7 +303,7 @@ describe('CreateCustomFieldTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(result).toEqual({
         success: true,
@@ -310,7 +318,7 @@ describe('CreateCustomFieldTool', () => {
         entity_type: 'feature' as const,
       };
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(result).toEqual({
         success: false,
@@ -326,7 +334,7 @@ describe('CreateCustomFieldTool', () => {
         entity_type: 'feature' as const,
       };
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(result).toEqual({
         success: false,
@@ -340,15 +348,10 @@ describe('CreateCustomFieldTool', () => {
         type: 'text' as const,
         entity_type: 'feature' as const,
       };
-      
+
       mockClient.post.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create custom field: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -357,7 +360,7 @@ describe('CreateCustomFieldTool', () => {
         type: 'text' as const,
         entity_type: 'feature' as const,
       };
-      
+
       const error = new Error('Authentication failed');
       (error as any).response = {
         status: 401,
@@ -370,12 +373,7 @@ describe('CreateCustomFieldTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create custom field: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle validation errors from API', async () => {
@@ -384,7 +382,7 @@ describe('CreateCustomFieldTool', () => {
         type: 'text' as const,
         entity_type: 'feature' as const,
       };
-      
+
       const error = new Error('Validation error');
       (error as any).response = {
         status: 400,
@@ -402,12 +400,7 @@ describe('CreateCustomFieldTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create custom field: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -417,12 +410,8 @@ describe('CreateCustomFieldTool', () => {
         type: 'text' as const,
         entity_type: 'feature' as const,
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to create custom field:'),
-      });
+
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
   });
 
@@ -441,20 +430,20 @@ describe('CreateCustomFieldTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         name: 'Priority Level',
         type: 'text',
         entity_type: 'feature',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('id', 'cf_123');
-      expect((result as any).data).toHaveProperty('name', 'Priority Level');
-      expect((result as any).data).toHaveProperty('type', 'text');
-      expect((result as any).data).toHaveProperty('entity_type', 'feature');
+      expect(result.data).toHaveProperty('id', 'cf_123');
+      expect(result.data).toHaveProperty('name', 'Priority Level');
+      expect(result.data).toHaveProperty('type', 'text');
+      expect(result.data).toHaveProperty('entity_type', 'feature');
     });
   });
 });

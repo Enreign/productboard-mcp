@@ -3,6 +3,14 @@ import { LinkFeaturesToObjectiveTool } from '@tools/objectives/link-features';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('LinkFeaturesToObjectiveTool', () => {
   let tool: LinkFeaturesToObjectiveTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -130,7 +138,7 @@ describe('LinkFeaturesToObjectiveTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/objectives/obj_123/features', {
         feature_ids: ['feat_456', 'feat_789', 'feat_012'],
@@ -161,7 +169,7 @@ describe('LinkFeaturesToObjectiveTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/objectives/obj_123/features', {
         feature_ids: ['feat_456'],
@@ -204,7 +212,7 @@ describe('LinkFeaturesToObjectiveTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/objectives/obj_123/features', {
         feature_ids: ['feat_456', 'feat_invalid', 'feat_789'],
@@ -223,12 +231,7 @@ describe('LinkFeaturesToObjectiveTool', () => {
       
       mockClient.post.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to link features to objective: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle objective not found errors', async () => {
@@ -249,12 +252,7 @@ describe('LinkFeaturesToObjectiveTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to link features to objective: Objective not found',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Objective not found');
     });
 
     it('should handle authentication errors', async () => {
@@ -275,12 +273,7 @@ describe('LinkFeaturesToObjectiveTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to link features to objective: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle forbidden errors', async () => {
@@ -301,12 +294,7 @@ describe('LinkFeaturesToObjectiveTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to link features to objective: Insufficient permissions',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Insufficient permissions');
     });
 
     it('should handle validation errors from API', async () => {
@@ -331,12 +319,7 @@ describe('LinkFeaturesToObjectiveTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to link features to objective: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -345,12 +328,7 @@ describe('LinkFeaturesToObjectiveTool', () => {
         objective_id: 'obj_123',
         feature_ids: ['feat_456'],
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to link features to objective:'),
-      });
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
   });
 
@@ -371,10 +349,10 @@ describe('LinkFeaturesToObjectiveTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         objective_id: 'obj_123',
         feature_ids: ['feat_456'],
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
@@ -412,10 +390,10 @@ describe('LinkFeaturesToObjectiveTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         objective_id: 'obj_123',
         feature_ids: ['feat_456', 'feat_invalid', 'feat_archived'],
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
@@ -442,10 +420,10 @@ describe('LinkFeaturesToObjectiveTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         objective_id: 'obj_123',
         feature_ids: ['feat_invalid'],
-      });
+      }));
 
       expect(result).toEqual({
         success: true,

@@ -9,7 +9,7 @@ export class CurrentUserTool extends BaseTool<CurrentUserParams> {
   constructor(apiClient: ProductboardAPIClient, logger: Logger) {
     super(
       'pb_user_current',
-      'Get user information (Note: Productboard API shows all workspace users as it lacks a current user endpoint)',
+      'Verify API access by testing a minimal API call',
       {
         type: 'object',
         properties: {},
@@ -25,34 +25,16 @@ export class CurrentUserTool extends BaseTool<CurrentUserParams> {
   }
 
   protected async executeInternal(_params: CurrentUserParams): Promise<unknown> {
-    this.logger.info('Getting current user information');
+    this.logger.info('Verifying API authentication status');
 
-    // Note: Productboard API doesn't have a current user endpoint
-    // Extract user info from token context or use minimal API call
-    try {
-      // Try a minimal API call to get user context
-      const response = await this.apiClient.makeRequest({
-        method: 'GET',
-        endpoint: '/features',
-        params: { limit: 1 }
-      });
+    await this.apiClient.makeRequest({
+      method: 'GET',
+      endpoint: '/features',
+      params: { limit: 1 }
+    });
 
-      return {
-        success: true,
-        data: {
-          note: 'Productboard API does not provide a current user endpoint. Using token validation as user context.',
-          authenticated: true,
-          hasAccess: true,
-          apiResponse: 'Features endpoint accessible',
-          responseReceived: !!response
-        },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: 'Unable to validate current user context',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
+    return {
+      content: [{ type: 'text', text: 'Authentication verified. API access confirmed.' }],
+    };
   }
 }

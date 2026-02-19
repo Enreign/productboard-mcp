@@ -133,7 +133,7 @@ describe('MCPProtocolHandler', () => {
       const validation = protocolHandler.validateRequest(request);
 
       expect(validation.valid).toBe(true);
-      expect(validation.errors).toBeUndefined();
+      expect(validation.errors).toEqual([]);
     });
 
     it('should reject request without id', () => {
@@ -145,7 +145,9 @@ describe('MCPProtocolHandler', () => {
       const validation = protocolHandler.validateRequest(request);
 
       expect(validation.valid).toBe(false);
-      expect(validation.errors).toContain('Request id is required');
+      expect(validation.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ message: 'Request id is required' })])
+      );
     });
 
     it('should reject request without method', () => {
@@ -157,7 +159,9 @@ describe('MCPProtocolHandler', () => {
       const validation = protocolHandler.validateRequest(request);
 
       expect(validation.valid).toBe(false);
-      expect(validation.errors).toContain('Request method is required');
+      expect(validation.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ message: 'Request method is required' })])
+      );
     });
 
     it('should reject request for unknown tool', () => {
@@ -172,7 +176,9 @@ describe('MCPProtocolHandler', () => {
       const validation = protocolHandler.validateRequest(request);
 
       expect(validation.valid).toBe(false);
-      expect(validation.errors).toContain('Tool not found: pb_unknown_tool');
+      expect(validation.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ message: 'Tool not found: pb_unknown_tool' })])
+      );
     });
 
     it('should validate tool parameters against schema', () => {
@@ -196,8 +202,12 @@ describe('MCPProtocolHandler', () => {
       const validation = protocolHandler.validateRequest(request);
 
       expect(validation.valid).toBe(false);
-      expect(validation.errors).toContain('name is required');
-      expect(validation.errors).toContain('description must be string');
+      expect(validation.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ message: 'name is required' }),
+          expect.objectContaining({ message: 'description must be string' }),
+        ])
+      );
     });
 
     it('should handle non-tool methods without validation', () => {
@@ -398,7 +408,9 @@ describe('MCPProtocolHandler', () => {
       const validation = protocolHandler.validateRequest(request);
 
       expect(validation.valid).toBe(false);
-      expect(validation.errors).toContain(`Tool not found: ${longMethodName}`);
+      expect(validation.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ message: `Tool not found: ${longMethodName}` })])
+      );
     });
 
     it('should handle concurrent tool invocations', async () => {

@@ -1,5 +1,6 @@
 import pino, { Logger as PinoLogger } from 'pino';
-import { LoggerConfig } from './types.js';
+import { LoggerConfig, LogLevel } from './types.js';
+export { LogLevel };
 
 export class Logger {
   private pino: PinoLogger;

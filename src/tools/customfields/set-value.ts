@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface SetCustomFieldValueParams {
   entity_id: string;
@@ -48,33 +47,24 @@ export class SetCustomFieldValueTool extends BaseTool<SetCustomFieldValueParams>
     );
   }
 
-  protected async executeInternal(params: SetCustomFieldValueParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Setting custom field value', { 
+  protected async executeInternal(params: SetCustomFieldValueParams): Promise<unknown> {
+    this.logger.info('Setting custom field value', {
+      entity_id: params.entity_id,
+      field_id: params.field_id
+    });
+
+    const response = await this.apiClient.put(
+      `/customfields/${params.field_id}/values`,
+      {
         entity_id: params.entity_id,
-        field_id: params.field_id 
-      });
+        entity_type: params.entity_type,
+        value: params.value,
+      }
+    );
 
-      const response = await this.apiClient.put(
-        `/customfields/${params.field_id}/values`,
-        {
-          entity_id: params.entity_id,
-          entity_type: params.entity_type,
-          value: params.value,
-        }
-      );
-
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to set custom field value', error);
-      
-      return {
-        success: false,
-        error: `Failed to set custom field value: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

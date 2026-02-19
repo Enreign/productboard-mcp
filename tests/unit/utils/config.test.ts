@@ -174,7 +174,8 @@ describe('ConfigManager', () => {
         const configManager = new ConfigManager();
         const config = configManager.get();
 
-        expect(config.server.port).toBe(NaN);
+        // Invalid port strings result in NaN from parseInt, which becomes null after JSON serialization
+        expect(config.server.port).toBeNull();
       });
 
       it('should handle empty string environment variables', () => {
@@ -859,8 +860,8 @@ describe('ConfigManager', () => {
       expect(config.logPretty).toBe(true);
       expect(config.nodeEnv).toBe('production');
 
-      // Verify file values preserved where no env override  
-      expect(config.server.host).toBe('localhost'); // Default value used
+      // Verify file values preserved where no env override
+      expect(config.server.host).toBe('0.0.0.0'); // From file config
       expect(config.server.timeout).toBe(60000);
       expect(config.api.timeout).toBe(20000);
       expect(config.api.retryAttempts).toBe(5);

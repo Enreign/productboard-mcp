@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface CreateNoteParams {
   content: string;
@@ -67,23 +66,14 @@ export class CreateNoteTool extends BaseTool<CreateNoteParams> {
     );
   }
 
-  protected async executeInternal(params: CreateNoteParams): Promise<ToolExecutionResult> {
+  protected async executeInternal(params: CreateNoteParams): Promise<unknown> {
     this.logger.info('Creating note');
 
-    try {
-      const response = await this.apiClient.post('/notes', params);
+    const response = await this.apiClient.post('/notes', params);
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to create note', error);
-      
-      return {
-        success: false,
-        error: `Failed to create note: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

@@ -3,6 +3,14 @@ import { ExportDataTool } from '@tools/export/export-data';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('ExportDataTool', () => {
   let tool: ExportDataTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -223,7 +231,7 @@ describe('ExportDataTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.post).toHaveBeenCalledWith('/export', {
         export_type: 'features',
@@ -271,7 +279,7 @@ describe('ExportDataTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.post).toHaveBeenCalledWith('/export', {
         export_type: 'all',
@@ -300,13 +308,7 @@ describe('ExportDataTool', () => {
       
       mockClient.post.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to export data: API Error',
-      });
-      expect(mockLogger.error).toHaveBeenCalledWith('Failed to export data', expect.any(Error));
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -326,12 +328,7 @@ describe('ExportDataTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to export data: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle insufficient permissions error', async () => {
@@ -351,12 +348,7 @@ describe('ExportDataTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to export data: Insufficient permissions',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Insufficient permissions');
     });
 
     it('should handle validation errors from API', async () => {
@@ -384,12 +376,7 @@ describe('ExportDataTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to export data: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -398,12 +385,7 @@ describe('ExportDataTool', () => {
         export_type: 'features' as const,
         format: 'json' as const,
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to export data:'),
-      });
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
 
     it('should set default include_related to true', async () => {
@@ -448,7 +430,7 @@ describe('ExportDataTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(result).toEqual({
         success: true,
@@ -475,19 +457,19 @@ describe('ExportDataTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         export_type: 'features',
         format: 'csv',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('export_id', 'exp_complete');
-      expect((result as any).data).toHaveProperty('status', 'completed');
-      expect((result as any).data).toHaveProperty('file_url');
-      expect((result as any).data).toHaveProperty('record_count', 1500);
+      expect(result.data).toHaveProperty('export_id', 'exp_complete');
+      expect(result.data).toHaveProperty('status', 'completed');
+      expect(result.data).toHaveProperty('file_url');
+      expect(result.data).toHaveProperty('record_count', 1500);
     });
 
     it('should handle minimal response structure', async () => {
@@ -500,10 +482,10 @@ describe('ExportDataTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         export_type: 'notes',
         format: 'json',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
@@ -525,18 +507,18 @@ describe('ExportDataTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         export_type: 'objectives',
         format: 'xlsx',
         email_to: 'manager@company.com',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('email_to', 'manager@company.com');
-      expect((result as any).data).toHaveProperty('delivery_method', 'email');
+      expect(result.data).toHaveProperty('email_to', 'manager@company.com');
+      expect(result.data).toHaveProperty('delivery_method', 'email');
     });
   });
 });

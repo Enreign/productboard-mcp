@@ -3,6 +3,7 @@ import { resolve } from 'path';
 import { AuthenticationType } from '@auth/types.js';
 import { LogLevel } from './types.js';
 import { Config } from './types.js';
+export { Config };
 
 export class ConfigManager {
   private config: Config;
@@ -12,11 +13,10 @@ export class ConfigManager {
   }
 
   private loadConfig(): Config {
-    
-    const defaults = this.loadDefaults();
+    const fileConfig = this.loadDefaults();
     const envConfig = this.fromEnv();
-    
-    return this.mergeConfigs(defaults, envConfig);
+
+    return this.mergeConfigs(fileConfig, envConfig);
   }
 
   private loadDefaults(): Partial<Config> {
@@ -29,68 +29,85 @@ export class ConfigManager {
     }
   }
 
-  private fromEnv(): Config {
+  private fromEnv(): Partial<Config> {
     const env = process.env;
-    
-    return {
-      server: {
-        port: parseInt(env.MCP_SERVER_PORT || '3000'),
-        host: env.MCP_SERVER_HOST || 'localhost',
-        timeout: parseInt(env.MCP_SERVER_TIMEOUT || '30000'),
-      },
-      auth: {
-        type: (env.PRODUCTBOARD_AUTH_TYPE as AuthenticationType) || AuthenticationType.BEARER_TOKEN,
-        token: env.PRODUCTBOARD_API_TOKEN,
-        clientId: env.PRODUCTBOARD_OAUTH_CLIENT_ID,
-        clientSecret: env.PRODUCTBOARD_OAUTH_CLIENT_SECRET,
-        redirectUri: env.PRODUCTBOARD_OAUTH_REDIRECT_URI,
-      },
-      api: {
-        // Productboard API uses versioning via the X-Version header, not via path segments
-        baseUrl: env.PRODUCTBOARD_API_BASE_URL || 'https://api.productboard.com',
-        timeout: parseInt(env.PRODUCTBOARD_API_TIMEOUT || '10000'),
-        retryAttempts: parseInt(env.API_RETRY_ATTEMPTS || '3'),
-        retryDelay: parseInt(env.API_RETRY_DELAY || '1000'),
-      },
-      rateLimit: {
-        global: parseInt(env.RATE_LIMIT_GLOBAL || '100'),
-        windowMs: parseInt(env.RATE_LIMIT_WINDOW_MS || '60000'),
-      },
-      cache: {
-        enabled: env.CACHE_ENABLED === 'true',
-        ttl: parseInt(env.CACHE_TTL || '300'),
-        maxSize: parseInt(env.CACHE_MAX_SIZE || '100'),
-      },
-      logLevel: (env.LOG_LEVEL as LogLevel) || 'info',
-      logPretty: env.LOG_PRETTY === 'true',
-      nodeEnv: env.NODE_ENV || 'development',
-    };
+
+    const server: Partial<Config['server']> = {};
+    if (env.MCP_SERVER_PORT) server.port = parseInt(env.MCP_SERVER_PORT);
+    if (env.MCP_SERVER_HOST) server.host = env.MCP_SERVER_HOST;
+    if (env.MCP_SERVER_TIMEOUT) server.timeout = parseInt(env.MCP_SERVER_TIMEOUT);
+
+    const auth: Partial<Config['auth']> = {};
+    if (env.PRODUCTBOARD_AUTH_TYPE) auth.type = env.PRODUCTBOARD_AUTH_TYPE as AuthenticationType;
+    if (env.PRODUCTBOARD_API_TOKEN) auth.token = env.PRODUCTBOARD_API_TOKEN;
+    if (env.PRODUCTBOARD_OAUTH_CLIENT_ID) auth.clientId = env.PRODUCTBOARD_OAUTH_CLIENT_ID;
+    if (env.PRODUCTBOARD_OAUTH_CLIENT_SECRET) auth.clientSecret = env.PRODUCTBOARD_OAUTH_CLIENT_SECRET;
+    if (env.PRODUCTBOARD_OAUTH_REDIRECT_URI) auth.redirectUri = env.PRODUCTBOARD_OAUTH_REDIRECT_URI;
+
+    const api: Partial<Config['api']> = {};
+    if (env.PRODUCTBOARD_API_BASE_URL) api.baseUrl = env.PRODUCTBOARD_API_BASE_URL;
+    if (env.PRODUCTBOARD_API_TIMEOUT) api.timeout = parseInt(env.PRODUCTBOARD_API_TIMEOUT);
+    if (env.API_RETRY_ATTEMPTS) api.retryAttempts = parseInt(env.API_RETRY_ATTEMPTS);
+    if (env.API_RETRY_DELAY) api.retryDelay = parseInt(env.API_RETRY_DELAY);
+
+    const rateLimit: Partial<Config['rateLimit']> = {};
+    if (env.RATE_LIMIT_GLOBAL) rateLimit.global = parseInt(env.RATE_LIMIT_GLOBAL);
+    if (env.RATE_LIMIT_WINDOW_MS) rateLimit.windowMs = parseInt(env.RATE_LIMIT_WINDOW_MS);
+
+    const cache: Partial<Config['cache']> = {};
+    if (env.CACHE_ENABLED) cache.enabled = env.CACHE_ENABLED === 'true';
+    if (env.CACHE_TTL) cache.ttl = parseInt(env.CACHE_TTL);
+    if (env.CACHE_MAX_SIZE) cache.maxSize = parseInt(env.CACHE_MAX_SIZE);
+
+    const result: Partial<Config> = {};
+    if (Object.keys(server).length > 0) result.server = server as Config['server'];
+    if (Object.keys(auth).length > 0) result.auth = auth as Config['auth'];
+    if (Object.keys(api).length > 0) result.api = api as Config['api'];
+    if (Object.keys(rateLimit).length > 0) result.rateLimit = rateLimit as Config['rateLimit'];
+    if (Object.keys(cache).length > 0) result.cache = cache as Config['cache'];
+    if (env.LOG_LEVEL) result.logLevel = env.LOG_LEVEL as LogLevel;
+    if (env.LOG_PRETTY) result.logPretty = env.LOG_PRETTY === 'true';
+    if (env.NODE_ENV) result.nodeEnv = env.NODE_ENV;
+
+    return result;
   }
 
-  private mergeConfigs(defaults: Partial<Config>, envConfig: Config): Config {
+  private mergeConfigs(fileConfig: Partial<Config>, envConfig: Partial<Config>): Config {
+    // Base defaults < file config < env config (env has highest priority)
+    const baseDefaults: Config = {
+      server: { port: 3000, host: 'localhost', timeout: 30000 },
+      auth: { type: AuthenticationType.BEARER_TOKEN },
+      api: { baseUrl: 'https://api.productboard.com', timeout: 10000, retryAttempts: 3, retryDelay: 1000 },
+      rateLimit: { global: 100, windowMs: 60000 },
+      cache: { enabled: false, ttl: 300, maxSize: 100 },
+      logLevel: 'info',
+      logPretty: true,
+      nodeEnv: 'development',
+    };
+
     return {
-      server: { ...defaults.server, ...envConfig.server },
-      auth: { ...defaults.auth, ...envConfig.auth },
-      api: { ...defaults.api, ...envConfig.api },
-      rateLimit: { ...defaults.rateLimit, ...envConfig.rateLimit },
-      cache: { ...defaults.cache, ...envConfig.cache },
-      sampling: { ...defaults.sampling, ...envConfig.sampling },
-      resources: { 
-        enabled: envConfig.resources?.enabled ?? defaults.resources?.enabled ?? false,
-        refreshInterval: envConfig.resources?.refreshInterval ?? defaults.resources?.refreshInterval ?? 300000,
+      server: { ...baseDefaults.server, ...fileConfig.server, ...envConfig.server },
+      auth: { ...baseDefaults.auth, ...fileConfig.auth, ...envConfig.auth },
+      api: { ...baseDefaults.api, ...fileConfig.api, ...envConfig.api },
+      rateLimit: { ...baseDefaults.rateLimit, ...fileConfig.rateLimit, ...envConfig.rateLimit },
+      cache: { ...baseDefaults.cache, ...fileConfig.cache, ...envConfig.cache },
+      sampling: { ...fileConfig.sampling, ...envConfig.sampling },
+      resources: {
+        enabled: envConfig.resources?.enabled ?? fileConfig.resources?.enabled ?? false,
+        refreshInterval: envConfig.resources?.refreshInterval ?? fileConfig.resources?.refreshInterval ?? 300000,
       },
-      prompts: { 
-        enabled: envConfig.prompts?.enabled ?? defaults.prompts?.enabled ?? false,
-        templatesPath: envConfig.prompts?.templatesPath ?? defaults.prompts?.templatesPath ?? './prompts',
+      prompts: {
+        enabled: envConfig.prompts?.enabled ?? fileConfig.prompts?.enabled ?? false,
+        templatesPath: envConfig.prompts?.templatesPath ?? fileConfig.prompts?.templatesPath ?? './prompts',
       },
-      logLevel: envConfig.logLevel || defaults.logLevel || 'info',
-      logPretty: envConfig.logPretty ?? defaults.logPretty ?? true,
-      nodeEnv: envConfig.nodeEnv || defaults.nodeEnv || 'development',
+      logLevel: envConfig.logLevel || fileConfig.logLevel || baseDefaults.logLevel,
+      logPretty: envConfig.logPretty ?? fileConfig.logPretty ?? baseDefaults.logPretty,
+      nodeEnv: envConfig.nodeEnv || fileConfig.nodeEnv || baseDefaults.nodeEnv,
     };
   }
 
   get(): Config {
-    return { ...this.config };
+    return JSON.parse(JSON.stringify(this.config)) as Config;
   }
 
   validate(): { valid: boolean; errors: string[] } {
@@ -128,6 +145,6 @@ export class ConfigManager {
   }
 
   update(updates: Partial<Config>): void {
-    this.config = this.mergeConfigs(this.config, updates as Config);
+    this.config = this.mergeConfigs(this.config, updates);
   }
 }

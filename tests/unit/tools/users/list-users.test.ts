@@ -2,6 +2,14 @@ import { ListUsersTool } from '@tools/users/list-users';
 import { ProductboardAPIClient } from '@api/index';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('ListUsersTool', () => {
   let tool: ListUsersTool;
   let mockApiClient: jest.Mocked<ProductboardAPIClient>;
@@ -79,7 +87,7 @@ describe('ListUsersTool', () => {
     it('should list all users with default parameters', async () => {
       mockApiClient.makeRequest.mockResolvedValue(mockUsers);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -103,7 +111,7 @@ describe('ListUsersTool', () => {
 
       mockApiClient.makeRequest.mockResolvedValue(adminUsers);
 
-      const result = await tool.execute({ role: 'admin' });
+      const result = parseResult(await tool.execute({ role: 'admin' }));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -111,8 +119,8 @@ describe('ListUsersTool', () => {
         params: { role: 'admin' },
       });
 
-      expect((result as any).data.users).toHaveLength(1);
-      expect((result as any).data.users[0].role).toBe('admin');
+      expect(result.data.users).toHaveLength(1);
+      expect(result.data.users[0].role).toBe('admin');
     });
 
     it('should filter by active status', async () => {
@@ -134,7 +142,7 @@ describe('ListUsersTool', () => {
 
       mockApiClient.makeRequest.mockResolvedValue(searchResults);
 
-      const result = await tool.execute({ search: 'admin' });
+      const result = parseResult(await tool.execute({ search: 'admin' }));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -142,7 +150,7 @@ describe('ListUsersTool', () => {
         params: { search: 'admin' },
       });
 
-      expect((result as any).data.users).toHaveLength(1);
+      expect(result.data.users).toHaveLength(1);
     });
 
     it('should combine multiple filters', async () => {
@@ -174,7 +182,7 @@ describe('ListUsersTool', () => {
     it('should handle empty results', async () => {
       mockApiClient.makeRequest.mockResolvedValue([]);
 
-      const result = await tool.execute({ role: 'viewer' });
+      const result = parseResult(await tool.execute({ role: 'viewer' }));
 
       expect(result).toEqual({
         success: true,

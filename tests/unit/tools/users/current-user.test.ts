@@ -25,7 +25,7 @@ describe('CurrentUserTool', () => {
   describe('constructor', () => {
     it('should initialize with correct name and description', () => {
       expect(tool.name).toBe('pb_user_current');
-      expect(tool.description).toBe('Get information about the authenticated user');
+      expect(tool.description).toBe('Verify API access by testing a minimal API call');
     });
 
     it('should define correct parameters schema', () => {
@@ -37,65 +37,19 @@ describe('CurrentUserTool', () => {
   });
 
   describe('execute', () => {
-    const mockCurrentUser = {
-      id: 'current-user',
-      email: 'current@example.com',
-      name: 'Current User',
-      role: 'contributor',
-      active: true,
-      permissions: [
-        'features.read',
-        'features.write',
-        'notes.read',
-        'notes.write',
-      ],
-      workspace: {
-        id: 'workspace-1',
-        name: 'My Workspace',
-        plan: 'pro',
-      },
-    };
-
-    it('should get current user information successfully', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: mockCurrentUser,
-        links: {},
-      });
+    it('should verify API authentication successfully', async () => {
+      mockApiClient.makeRequest.mockResolvedValue({ data: [] });
 
       const result = await tool.execute({});
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
-        endpoint: '/users/me',
+        endpoint: '/features',
+        params: { limit: 1 },
       });
 
-      expect(result).toEqual({
-        success: true,
-        data: mockCurrentUser,
-      });
-
-      expect(mockLogger.info).toHaveBeenCalledWith('Getting current user information');
-    });
-
-    it('should handle user with minimal information', async () => {
-      const minimalUser = {
-        id: 'user-minimal',
-        email: 'minimal@example.com',
-        role: 'viewer',
-        active: true,
-      };
-
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: minimalUser,
-        links: {},
-      });
-
-      const result = await tool.execute({});
-
-      expect(result).toEqual({
-        success: true,
-        data: minimalUser,
-      });
+      expect(result.content[0].text).toBe('Authentication verified. API access confirmed.');
+      expect(mockLogger.info).toHaveBeenCalledWith('Verifying API authentication status');
     });
 
     it('should handle authentication errors', async () => {
@@ -123,31 +77,10 @@ describe('CurrentUserTool', () => {
     });
 
     it('should accept empty parameters object', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: mockCurrentUser,
-        links: {},
-      });
+      mockApiClient.makeRequest.mockResolvedValue({ data: [] });
 
       const result = await tool.execute({});
-
-      expect((result as any).success).toBe(true);
-    });
-
-    it('should ignore any passed parameters', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: mockCurrentUser,
-        links: {},
-      });
-
-      // Even if we pass parameters, they should be ignored
-      const result = await tool.execute({ someParam: 'value' } as any);
-
-      expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/users/me',
-      });
-
-      expect((result as any).success).toBe(true);
+      expect(result.content[0].text).toContain('Authentication verified');
     });
   });
 });

@@ -292,8 +292,8 @@ describe('ProductboardAPIClient', () => {
   describe('Connection Testing', () => {
     it('should test connection successfully', async () => {
       nock(BASE_URL)
-        .get('/users/current')
-        .reply(200, { id: 'user1', email: 'test@example.com' });
+        .get('/features')
+        .reply(200, [{ id: '1', name: 'Feature 1' }]);
 
       const result = await client.testConnection();
       expect(result).toBe(true);
@@ -301,7 +301,7 @@ describe('ProductboardAPIClient', () => {
 
     it('should handle connection test failure', async () => {
       nock(BASE_URL)
-        .get('/users/current')
+        .get('/features')
         .reply(401, { message: 'Unauthorized' });
 
       const result = await client.testConnection();
@@ -311,9 +311,9 @@ describe('ProductboardAPIClient', () => {
     it('should propagate non-auth connection errors', async () => {
       // Server errors are retryable, so we need to mock multiple attempts
       nock(BASE_URL)
-        .get('/users/current')
+        .get('/features')
         .reply(500, { message: 'Server error' })
-        .get('/users/current')
+        .get('/features')
         .reply(500, { message: 'Server error' });
 
       await expect(client.testConnection()).rejects.toThrow(APIServerError);

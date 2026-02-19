@@ -3,6 +3,14 @@ import { UpdateObjectiveTool } from '@tools/objectives/update-objective';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('UpdateObjectiveTool', () => {
   let tool: UpdateObjectiveTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -161,7 +169,7 @@ describe('UpdateObjectiveTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/objectives/obj_123', {
         name: 'Updated Objective',
@@ -189,7 +197,7 @@ describe('UpdateObjectiveTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/objectives/obj_123', {
         status: 'completed',
@@ -205,8 +213,7 @@ describe('UpdateObjectiveTool', () => {
         id: 'obj_123',
       };
 
-      const result = await tool.execute(input);
-
+      const result = parseResult(await tool.execute(input));
       expect(result).toEqual({
         success: false,
         error: 'No update fields provided',
@@ -222,12 +229,7 @@ describe('UpdateObjectiveTool', () => {
       
       mockClient.put.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update objective: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle not found errors', async () => {
@@ -248,12 +250,7 @@ describe('UpdateObjectiveTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update objective: Objective not found',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Objective not found');
     });
 
     it('should handle authentication errors', async () => {
@@ -274,12 +271,7 @@ describe('UpdateObjectiveTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update objective: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle validation errors from API', async () => {
@@ -304,12 +296,7 @@ describe('UpdateObjectiveTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update objective: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -318,12 +305,7 @@ describe('UpdateObjectiveTool', () => {
         id: 'obj_123',
         name: 'Updated Objective',
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to update objective:'),
-      });
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
   });
 
@@ -340,10 +322,10 @@ describe('UpdateObjectiveTool', () => {
 
       mockClient.put.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'obj_123',
         name: 'Updated Objective',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,

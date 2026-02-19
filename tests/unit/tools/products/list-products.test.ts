@@ -2,6 +2,14 @@ import { ListProductsTool } from '@tools/products/list-products';
 import { ProductboardAPIClient } from '@api/index';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('ListProductsTool', () => {
   let tool: ListProductsTool;
   let mockApiClient: jest.Mocked<ProductboardAPIClient>;
@@ -75,7 +83,7 @@ describe('ListProductsTool', () => {
         links: {},
       });
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -109,7 +117,7 @@ describe('ListProductsTool', () => {
         links: {},
       });
 
-      const result = await tool.execute({ parent_id: 'prod-1' });
+      const result = parseResult(await tool.execute({ parent_id: 'prod-1' }));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -117,7 +125,7 @@ describe('ListProductsTool', () => {
         params: { parent_id: 'prod-1' },
       });
 
-      expect((result as any).data.products).toEqual(subProducts);
+      expect(result.data.products).toEqual(subProducts);
     });
 
     it('should include components when requested', async () => {
@@ -133,7 +141,7 @@ describe('ListProductsTool', () => {
         links: {},
       });
 
-      const result = await tool.execute({ include_components: true });
+      const result = parseResult(await tool.execute({ include_components: true }));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -141,7 +149,7 @@ describe('ListProductsTool', () => {
         params: { include_components: true },
       });
 
-      expect((result as any).data.products[0]).toHaveProperty('components');
+      expect(result.data.products[0]).toHaveProperty('components');
     });
 
     it('should include archived products when requested', async () => {
@@ -159,7 +167,7 @@ describe('ListProductsTool', () => {
         links: {},
       });
 
-      const result = await tool.execute({ include_archived: true });
+      const result = parseResult(await tool.execute({ include_archived: true }));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -167,8 +175,8 @@ describe('ListProductsTool', () => {
         params: { include_archived: true },
       });
 
-      expect((result as any).data.products).toHaveLength(3);
-      expect((result as any).data.products.some((p: any) => p.archived)).toBe(true);
+      expect(result.data.products).toHaveLength(3);
+      expect(result.data.products.some((p: any) => p.archived)).toBe(true);
     });
 
     it('should handle empty results', async () => {
@@ -177,7 +185,7 @@ describe('ListProductsTool', () => {
         links: {},
       });
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(result).toEqual({
         success: true,
@@ -191,17 +199,7 @@ describe('ListProductsTool', () => {
     it('should handle API errors', async () => {
       mockApiClient.makeRequest.mockRejectedValue(new Error('API Error'));
 
-      const result = await tool.execute({});
-
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to list products: API Error',
-      });
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to list products',
-        expect.any(Error)
-      );
+      await expect(tool.execute({})).rejects.toThrow('API Error');
     });
   });
 });

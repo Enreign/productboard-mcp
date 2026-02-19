@@ -3,6 +3,14 @@ import { AddFeaturesToReleaseTool } from '@tools/releases/add-features';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('AddFeaturesToReleaseTool', () => {
   let tool: AddFeaturesToReleaseTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -127,7 +135,7 @@ describe('AddFeaturesToReleaseTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/releases/rel_123/features', {
         feature_ids: ['feat_123', 'feat_456', 'feat_789'],
@@ -154,10 +162,10 @@ describe('AddFeaturesToReleaseTool', () => {
         ],
         release_id: 'rel_123',
       };
-      
+
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/releases/rel_123/features', {
         feature_ids: ['feat_123'],
@@ -173,15 +181,10 @@ describe('AddFeaturesToReleaseTool', () => {
         release_id: 'rel_123',
         feature_ids: ['feat_123'],
       };
-      
+
       mockClient.post.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to add features to release: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -189,7 +192,7 @@ describe('AddFeaturesToReleaseTool', () => {
         release_id: 'rel_123',
         feature_ids: ['feat_123'],
       };
-      
+
       const error = new Error('Authentication failed');
       (error as any).response = {
         status: 401,
@@ -202,12 +205,7 @@ describe('AddFeaturesToReleaseTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to add features to release: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle validation errors from API', async () => {
@@ -215,7 +213,7 @@ describe('AddFeaturesToReleaseTool', () => {
         release_id: 'rel_123',
         feature_ids: ['feat_123', 'feat_invalid'],
       };
-      
+
       const error = new Error('Validation error');
       (error as any).response = {
         status: 400,
@@ -231,12 +229,7 @@ describe('AddFeaturesToReleaseTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to add features to release: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should handle not found errors', async () => {
@@ -244,7 +237,7 @@ describe('AddFeaturesToReleaseTool', () => {
         release_id: 'rel_nonexistent',
         feature_ids: ['feat_123'],
       };
-      
+
       const error = new Error('Not found');
       (error as any).response = {
         status: 404,
@@ -257,12 +250,7 @@ describe('AddFeaturesToReleaseTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to add features to release: Not found',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Not found');
     });
 
     it('should handle duplicate feature errors', async () => {
@@ -270,7 +258,7 @@ describe('AddFeaturesToReleaseTool', () => {
         release_id: 'rel_123',
         feature_ids: ['feat_123', 'feat_456'],
       };
-      
+
       const error = new Error('Conflict');
       (error as any).response = {
         status: 409,
@@ -285,12 +273,7 @@ describe('AddFeaturesToReleaseTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to add features to release: Conflict',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Conflict');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -299,12 +282,8 @@ describe('AddFeaturesToReleaseTool', () => {
         release_id: 'rel_123',
         feature_ids: ['feat_123'],
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to add features to release:'),
-      });
+
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
   });
 
@@ -324,18 +303,18 @@ describe('AddFeaturesToReleaseTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         release_id: 'rel_123',
         feature_ids: ['feat_123'],
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('added_features');
-      expect((result as any).data).toHaveProperty('release_id', 'rel_123');
-      expect((result as any).data.added_features[0]).toHaveProperty('id', 'feat_123');
+      expect(result.data).toHaveProperty('added_features');
+      expect(result.data).toHaveProperty('release_id', 'rel_123');
+      expect(result.data.added_features[0]).toHaveProperty('id', 'feat_123');
     });
   });
 });

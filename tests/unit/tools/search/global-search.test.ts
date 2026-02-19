@@ -104,10 +104,14 @@ describe('GlobalSearchTool', () => {
         params: { q: 'search term', limit: 10 },
       });
 
-      expect(result).toEqual({
-        success: true,
-        data: mockSearchResults,
-      });
+      const text = result.content[0].text;
+      expect(text).toContain('Search results for "search term"');
+      expect(text).toContain('FEATURES (1)');
+      expect(text).toContain('Search Feature');
+      expect(text).toContain('NOTES (1)');
+      expect(text).toContain('Customer wants better search');
+      expect(text).toContain('PRODUCTS (1)');
+      expect(text).toContain('Search Product');
 
       expect(mockLogger.info).toHaveBeenCalledWith(
         'Performing global search',
@@ -144,7 +148,8 @@ describe('GlobalSearchTool', () => {
         },
       });
 
-      expect((result as any).data).not.toHaveProperty('products');
+      const text = result.content[0].text;
+      expect(text).not.toContain('PRODUCTS');
     });
 
     it('should respect custom limit', async () => {
@@ -219,17 +224,8 @@ describe('GlobalSearchTool', () => {
 
       const result = await tool.execute({ query: 'nonexistent' });
 
-      expect(result).toEqual({
-        success: true,
-        data: {
-          features: [],
-          notes: [],
-          products: [],
-          objectives: [],
-          users: [],
-          total_results: 0,
-        },
-      });
+      const text = result.content[0].text;
+      expect(text).toContain('No results found for "nonexistent"');
     });
 
     it('should handle search with special characters', async () => {
@@ -257,17 +253,7 @@ describe('GlobalSearchTool', () => {
     it('should handle API errors', async () => {
       mockApiClient.makeRequest.mockRejectedValue(new Error('Search service unavailable'));
 
-      const result = await tool.execute(validParams);
-
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to perform search: Search service unavailable',
-      });
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to perform global search',
-        expect.any(Error)
-      );
+      await expect(tool.execute(validParams)).rejects.toThrow('Search service unavailable');
     });
   });
 });

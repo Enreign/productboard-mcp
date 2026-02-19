@@ -3,6 +3,14 @@ import { CreateObjectiveTool } from '@tools/objectives/create-objective';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('CreateObjectiveTool', () => {
   let tool: CreateObjectiveTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -138,7 +146,7 @@ describe('CreateObjectiveTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/objectives', validInput);
       expect(result).toEqual({
@@ -163,7 +171,7 @@ describe('CreateObjectiveTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(minimalInput);
+      const result = parseResult(await tool.execute(minimalInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/objectives', minimalInput);
       expect(result).toEqual({
@@ -180,12 +188,7 @@ describe('CreateObjectiveTool', () => {
       
       mockClient.post.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create objective: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -206,12 +209,7 @@ describe('CreateObjectiveTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create objective: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle validation errors from API', async () => {
@@ -237,12 +235,7 @@ describe('CreateObjectiveTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create objective: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -251,12 +244,7 @@ describe('CreateObjectiveTool', () => {
         name: 'Increase User Engagement',
         description: 'Improve user engagement metrics for Q2',
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to create objective:'),
-      });
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
   });
 
@@ -273,10 +261,10 @@ describe('CreateObjectiveTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         name: 'Test Objective',
         description: 'Test Description',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,

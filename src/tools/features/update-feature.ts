@@ -1,7 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface UpdateFeatureParams {
   id: string;
@@ -90,22 +90,13 @@ export class UpdateFeatureTool extends BaseTool<UpdateFeatureParams> {
   }
 
   protected async executeInternal(params: UpdateFeatureParams): Promise<unknown> {
-    try {
-      const { id, ...updateData } = params;
+    const { id, ...updateData } = params;
 
-      const response = await this.apiClient.patch(`/features/${id}`, updateData);
+    const response = await this.apiClient.patch(`/features/${id}`, updateData);
 
-      return {
-        success: true,
-        data: (response as any).data || response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to update feature', error);
-
-      return {
-        success: false,
-        error: `Failed to update feature: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: (response as any).data || response,
+    };
   }
 }

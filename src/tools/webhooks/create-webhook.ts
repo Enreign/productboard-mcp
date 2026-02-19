@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface CreateWebhookParams {
   name: string;
@@ -57,23 +56,14 @@ export class CreateWebhookTool extends BaseTool<CreateWebhookParams> {
     );
   }
 
-  protected async executeInternal(params: CreateWebhookParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Creating webhook', { name: params.name, url: params.url });
+  protected async executeInternal(params: CreateWebhookParams): Promise<unknown> {
+    this.logger.info('Creating webhook', { name: params.name, url: params.url });
 
-      const response = await this.apiClient.post('/webhooks', params);
+    const response = await this.apiClient.post('/webhooks', params);
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to create webhook', error);
-      
-      return {
-        success: false,
-        error: `Failed to create webhook: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

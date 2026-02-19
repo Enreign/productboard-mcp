@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface NoteFeatureAttachment {
   note_id: string;
@@ -64,55 +63,46 @@ export class BulkAttachNotesTool extends BaseTool<BulkAttachNotesParams> {
     );
   }
 
-  protected async executeInternal(params: BulkAttachNotesParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Bulk attaching notes to features', { count: params.attachments.length });
+  protected async executeInternal(params: BulkAttachNotesParams): Promise<unknown> {
+    this.logger.info('Bulk attaching notes to features', { count: params.attachments.length });
 
-      const batchSize = params.batch_size || 10;
-      const results = {
-        attached: [] as { note_id: string; feature_ids: string[] }[],
-        failed: [] as { note_id: string; error: string }[],
-      };
+    const batchSize = params.batch_size || 10;
+    const results = {
+      attached: [] as { note_id: string; feature_ids: string[] }[],
+      failed: [] as { note_id: string; error: string }[],
+    };
 
-      for (let i = 0; i < params.attachments.length; i += batchSize) {
-        const batch = params.attachments.slice(i, i + batchSize);
-        
-        for (const attachment of batch) {
-          try {
-            await this.apiClient.post(`/notes/${attachment.note_id}/features`, {
-              feature_ids: attachment.feature_ids,
-            });
-            
-            results.attached.push({
-              note_id: attachment.note_id,
-              feature_ids: attachment.feature_ids,
-            });
-          } catch (error) {
-            this.logger.error(`Failed to attach note ${attachment.note_id}`, error);
-            results.failed.push({
-              note_id: attachment.note_id,
-              error: (error as Error).message,
-            });
-          }
+    for (let i = 0; i < params.attachments.length; i += batchSize) {
+      const batch = params.attachments.slice(i, i + batchSize);
+
+      for (const attachment of batch) {
+        try {
+          await this.apiClient.post(`/notes/${attachment.note_id}/features`, {
+            feature_ids: attachment.feature_ids,
+          });
+
+          results.attached.push({
+            note_id: attachment.note_id,
+            feature_ids: attachment.feature_ids,
+          });
+        } catch (error) {
+          this.logger.error(`Failed to attach note ${attachment.note_id}`, error);
+          results.failed.push({
+            note_id: attachment.note_id,
+            error: (error as Error).message,
+          });
         }
       }
-
-      return {
-        success: results.failed.length === 0,
-        data: {
-          attached: results.attached,
-          total_attached: results.attached.length,
-          total_failed: results.failed.length,
-          failed: results.failed.length > 0 ? results.failed : undefined,
-        },
-      };
-    } catch (error) {
-      this.logger.error('Failed to bulk attach notes', error);
-      
-      return {
-        success: false,
-        error: `Failed to bulk attach notes: ${(error as Error).message}`,
-      };
     }
+
+    return {
+      success: results.failed.length === 0,
+      data: {
+        attached: results.attached,
+        total_attached: results.attached.length,
+        total_failed: results.failed.length,
+        failed: results.failed.length > 0 ? results.failed : undefined,
+      },
+    };
   }
 }

@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface LinkFeaturesToObjectiveParams {
   objective_id: string;
@@ -40,28 +39,19 @@ export class LinkFeaturesToObjectiveTool extends BaseTool<LinkFeaturesToObjectiv
     );
   }
 
-  protected async executeInternal(params: LinkFeaturesToObjectiveParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Linking features to objective', { 
-        objective_id: params.objective_id,
-        feature_count: params.feature_ids.length 
-      });
+  protected async executeInternal(params: LinkFeaturesToObjectiveParams): Promise<unknown> {
+    this.logger.info('Linking features to objective', {
+      objective_id: params.objective_id,
+      feature_count: params.feature_ids.length
+    });
 
-      const response = await this.apiClient.post(`/objectives/${params.objective_id}/features`, {
-        feature_ids: params.feature_ids,
-      });
+    const response = await this.apiClient.post(`/objectives/${params.objective_id}/features`, {
+      feature_ids: params.feature_ids,
+    });
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to link features to objective', error);
-      
-      return {
-        success: false,
-        error: `Failed to link features to objective: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

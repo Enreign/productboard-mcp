@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface CreateReleaseParams {
   name: string;
@@ -49,23 +48,14 @@ export class CreateReleaseTool extends BaseTool<CreateReleaseParams> {
     );
   }
 
-  protected async executeInternal(params: CreateReleaseParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Creating release', { name: params.name });
+  protected async executeInternal(params: CreateReleaseParams): Promise<unknown> {
+    this.logger.info('Creating release', { name: params.name });
 
-      const response = await this.apiClient.post('/releases', params);
+    const response = await this.apiClient.post('/releases', params);
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to create release', error);
-      
-      return {
-        success: false,
-        error: `Failed to create release: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

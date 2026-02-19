@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface CreateKeyResultParams {
   objective_id: string;
@@ -59,26 +58,17 @@ export class CreateKeyResultTool extends BaseTool<CreateKeyResultParams> {
     );
   }
 
-  protected async executeInternal(params: CreateKeyResultParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Creating key result', { 
-        name: params.name, 
-        objective_id: params.objective_id 
-      });
+  protected async executeInternal(params: CreateKeyResultParams): Promise<unknown> {
+    this.logger.info('Creating key result', {
+      name: params.name,
+      objective_id: params.objective_id
+    });
 
-      const response = await this.apiClient.post('/keyresults', params);
+    const response = await this.apiClient.post('/keyresults', params);
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to create key result', error);
-      
-      return {
-        success: false,
-        error: `Failed to create key result: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

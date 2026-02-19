@@ -3,6 +3,14 @@ import { UserEngagementTool } from '@tools/analytics/user-engagement';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('UserEngagementTool', () => {
   let tool: UserEngagementTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -163,7 +171,7 @@ describe('UserEngagementTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -212,7 +220,7 @@ describe('UserEngagementTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -235,13 +243,7 @@ describe('UserEngagementTool', () => {
       const error = new Error('API Error');
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to get user engagement analytics: API Error',
-      });
-      expect(mockLogger.error).toHaveBeenCalledWith('Failed to get user engagement analytics', error);
+      await expect(tool.execute({})).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -256,12 +258,7 @@ describe('UserEngagementTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to get user engagement analytics: Authentication failed',
-      });
+      await expect(tool.execute({})).rejects.toThrow('Authentication failed');
     });
 
     it('should handle insufficient permissions error', async () => {
@@ -276,22 +273,13 @@ describe('UserEngagementTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to get user engagement analytics: Insufficient permissions',
-      });
+      await expect(tool.execute({})).rejects.toThrow('Insufficient permissions');
     });
 
     it('should throw error if client not initialized', async () => {
       const uninitializedTool = new UserEngagementTool(null as any, mockLogger);
-      const result = await uninitializedTool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to get user engagement analytics:'),
-      });
+
+      await expect(uninitializedTool.execute({})).rejects.toThrow();
     });
 
     it('should handle empty arrays gracefully', async () => {
@@ -306,7 +294,7 @@ describe('UserEngagementTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -340,7 +328,7 @@ describe('UserEngagementTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -399,20 +387,20 @@ describe('UserEngagementTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         engagement_types: ['logins', 'features_created', 'votes'],
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('summary');
-      expect((result as any).data).toHaveProperty('users');
-      expect((result as any).data.summary).toHaveProperty('total_users', 200);
-      expect((result as any).data.users[0]).toHaveProperty('user_id', 'user_789');
-      expect((result as any).data.users[0]).toHaveProperty('engagement_metrics');
-      expect((result as any).data.users[0].engagement_metrics).toHaveProperty('logins', 35);
+      expect(result.data).toHaveProperty('summary');
+      expect(result.data).toHaveProperty('users');
+      expect(result.data.summary).toHaveProperty('total_users', 200);
+      expect(result.data.users[0]).toHaveProperty('user_id', 'user_789');
+      expect(result.data.users[0]).toHaveProperty('engagement_metrics');
+      expect(result.data.users[0].engagement_metrics).toHaveProperty('logins', 35);
     });
 
     it('should handle minimal response structure', async () => {
@@ -426,7 +414,7 @@ describe('UserEngagementTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(result).toEqual({
         success: true,
@@ -456,14 +444,14 @@ describe('UserEngagementTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('role_breakdown');
-      expect((result as any).data).toHaveProperty('engagement_distribution');
+      expect(result.data).toHaveProperty('role_breakdown');
+      expect(result.data).toHaveProperty('engagement_distribution');
     });
   });
 });

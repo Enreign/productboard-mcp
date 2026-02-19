@@ -4,6 +4,14 @@ import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 // Error types are checked by message rather than type
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('CreateFeatureTool', () => {
   let tool: CreateFeatureTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -147,7 +155,7 @@ describe('CreateFeatureTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/features', validInput);
       expect(result).toEqual({
@@ -161,15 +169,10 @@ describe('CreateFeatureTool', () => {
         name: 'User Authentication Feature',
         description: 'Implement OAuth2 authentication for mobile app',
       };
-      
+
       mockClient.post.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create feature: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -177,7 +180,7 @@ describe('CreateFeatureTool', () => {
         name: 'User Authentication Feature',
         description: 'Implement OAuth2 authentication for mobile app',
       };
-      
+
       const error = new Error('Authentication failed');
       (error as any).response = {
         status: 401,
@@ -190,12 +193,7 @@ describe('CreateFeatureTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create feature: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle validation errors from API', async () => {
@@ -203,7 +201,7 @@ describe('CreateFeatureTool', () => {
         name: 'User Authentication Feature',
         description: 'Implement OAuth2 authentication for mobile app',
       };
-      
+
       const error = new Error('Validation error');
       (error as any).response = {
         status: 400,
@@ -221,12 +219,7 @@ describe('CreateFeatureTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create feature: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -235,12 +228,8 @@ describe('CreateFeatureTool', () => {
         name: 'User Authentication Feature',
         description: 'Implement OAuth2 authentication for mobile app',
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to create feature:'),
-      });
+
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
 
     it('should set default status to "new" if not provided', async () => {
@@ -282,18 +271,18 @@ describe('CreateFeatureTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         name: 'Test Feature',
         description: 'Test Description',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('id', 'feat_123');
-      expect((result as any).data).toHaveProperty('name', 'Test Feature');
-      expect((result as any).data).toHaveProperty('created_at');
+      expect(result.data).toHaveProperty('id', 'feat_123');
+      expect(result.data).toHaveProperty('name', 'Test Feature');
+      expect(result.data).toHaveProperty('created_at');
     });
   });
 });

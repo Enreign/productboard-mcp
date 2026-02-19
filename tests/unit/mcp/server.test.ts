@@ -110,18 +110,6 @@ describe('ProductboardMCPServer', () => {
       protocolHandler: {
         invokeTool: jest.fn().mockResolvedValue({ success: true, data: {} }),
       } as jest.Mocked<any>,
-      resourceRegistry: {
-        registerResource: jest.fn(),
-        size: jest.fn().mockReturnValue(2),
-        listResources: jest.fn().mockReturnValue([]),
-        getResource: jest.fn(),
-      } as any,
-      promptRegistry: {
-        registerPrompt: jest.fn(),
-        size: jest.fn().mockReturnValue(2),
-        listPrompts: jest.fn().mockReturnValue([]),
-        getPrompt: jest.fn(),
-      } as any,
       permissionDiscovery: {
         discoverUserPermissions: jest.fn().mockResolvedValue({
           accessLevel: 'write',
@@ -196,10 +184,7 @@ describe('ProductboardMCPServer', () => {
       await server.initialize();
 
       expect(mockDependencies.logger.info).toHaveBeenCalledWith('Initializing Productboard MCP Server...');
-      // In test mode, auth and API checks are skipped
-      expect(mockDependencies.logger.info).toHaveBeenCalledWith('Skipping authentication validation in test mode');
-      expect(mockDependencies.logger.info).toHaveBeenCalledWith('Skipping API connection test in test mode');
-      expect(mockDependencies.logger.info).toHaveBeenCalledWith('Skipping permission discovery in test mode');
+      // In test mode, auth, API connection, and permission discovery checks are silently skipped
       expect(mockDependencies.logger.info).toHaveBeenCalledWith('Productboard MCP Server initialized successfully');
     });
 

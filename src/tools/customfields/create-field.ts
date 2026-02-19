@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface CreateCustomFieldParams {
   name: string;
@@ -62,31 +61,22 @@ export class CreateCustomFieldTool extends BaseTool<CreateCustomFieldParams> {
     );
   }
 
-  protected async executeInternal(params: CreateCustomFieldParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Creating custom field', { name: params.name, type: params.type });
+  protected async executeInternal(params: CreateCustomFieldParams): Promise<unknown> {
+    this.logger.info('Creating custom field', { name: params.name, type: params.type });
 
-      // Validate options for select fields
-      if ((params.type === 'select' || params.type === 'multiselect') && !params.options?.length) {
-        return {
-          success: false,
-          error: 'Options are required for select and multiselect field types',
-        };
-      }
-
-      const response = await this.apiClient.post('/customfields', params);
-
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to create custom field', error);
-      
+    // Validate options for select fields
+    if ((params.type === 'select' || params.type === 'multiselect') && !params.options?.length) {
       return {
         success: false,
-        error: `Failed to create custom field: ${(error as Error).message}`,
+        error: 'Options are required for select and multiselect field types',
       };
     }
+
+    const response = await this.apiClient.post('/customfields', params);
+
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

@@ -3,6 +3,14 @@ import { ReleaseTimelineTool } from '@tools/releases/timeline';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('ReleaseTimelineTool', () => {
   let tool: ReleaseTimelineTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -135,7 +143,7 @@ describe('ReleaseTimelineTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -176,7 +184,7 @@ describe('ReleaseTimelineTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -224,7 +232,7 @@ describe('ReleaseTimelineTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -256,7 +264,7 @@ describe('ReleaseTimelineTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(result).toEqual({
         success: true,
@@ -267,12 +275,7 @@ describe('ReleaseTimelineTool', () => {
     it('should handle API errors gracefully', async () => {
       mockClient.makeRequest.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to get release timeline: API Error',
-      });
+      await expect(tool.execute({})).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -288,12 +291,7 @@ describe('ReleaseTimelineTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to get release timeline: Authentication failed',
-      });
+      await expect(tool.execute({})).rejects.toThrow('Authentication failed');
     });
 
     it('should handle validation errors from API', async () => {
@@ -301,7 +299,7 @@ describe('ReleaseTimelineTool', () => {
         date_from: '2024-01-01',
         date_to: '2023-01-01', // Invalid date range
       };
-      
+
       const error = new Error('Validation error');
       (error as any).response = {
         status: 400,
@@ -318,19 +316,14 @@ describe('ReleaseTimelineTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(input);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to get release timeline: Validation error',
-      });
+      await expect(tool.execute(input)).rejects.toThrow('Validation error');
     });
 
     it('should handle not found errors', async () => {
       const input = {
         release_group_id: 'group_nonexistent',
       };
-      
+
       const error = new Error('Not found');
       (error as any).response = {
         status: 404,
@@ -343,22 +336,13 @@ describe('ReleaseTimelineTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(input);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to get release timeline: Not found',
-      });
+      await expect(tool.execute(input)).rejects.toThrow('Not found');
     });
 
     it('should throw error if client not initialized', async () => {
       const uninitializedTool = new ReleaseTimelineTool(null as any, mockLogger);
-      const result = await uninitializedTool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to get release timeline:'),
-      });
+
+      await expect(uninitializedTool.execute({})).rejects.toThrow();
     });
   });
 
@@ -388,17 +372,17 @@ describe('ReleaseTimelineTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('timeline');
-      expect((result as any).data).toHaveProperty('metadata');
-      expect((result as any).data.timeline[0]).toHaveProperty('id', 'rel_123');
-      expect((result as any).data.timeline[0]).toHaveProperty('features');
-      expect((result as any).data.timeline[0].features[0]).toHaveProperty('id', 'feat_123');
+      expect(result.data).toHaveProperty('timeline');
+      expect(result.data).toHaveProperty('metadata');
+      expect(result.data.timeline[0]).toHaveProperty('id', 'rel_123');
+      expect(result.data.timeline[0]).toHaveProperty('features');
+      expect(result.data.timeline[0].features[0]).toHaveProperty('id', 'feat_123');
     });
   });
 });

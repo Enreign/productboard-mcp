@@ -4,6 +4,14 @@ import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 // Error types are checked by message rather than type
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('UpdateFeatureTool', () => {
   let tool: UpdateFeatureTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -139,7 +147,7 @@ describe('UpdateFeatureTool', () => {
       
       mockClient.patch.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.patch).toHaveBeenCalledWith(
         '/features/feat_123456',
@@ -177,7 +185,7 @@ describe('UpdateFeatureTool', () => {
 
       mockClient.patch.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(partialUpdate);
+      const result = parseResult(await tool.execute(partialUpdate));
 
       expect(mockClient.patch).toHaveBeenCalledWith('/features/feat_123', {
         status: 'done',
@@ -210,7 +218,7 @@ describe('UpdateFeatureTool', () => {
 
       mockClient.patch.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(tagUpdate);
+      const result = parseResult(await tool.execute(tagUpdate));
 
       expect(mockClient.patch).toHaveBeenCalledWith('/features/feat_123', {
         tags: ['updated', 'tags'],
@@ -234,12 +242,7 @@ describe('UpdateFeatureTool', () => {
       };
       mockClient.patch.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({ id: 'feat_nonexistent', name: 'Test' });
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update feature: Not found',
-      });
+      await expect(tool.execute({ id: 'feat_nonexistent', name: 'Test' })).rejects.toThrow('Not found');
     });
 
     it('should handle API validation errors', async () => {
@@ -249,7 +252,7 @@ describe('UpdateFeatureTool', () => {
         status: 'validation' as const,
         priority: 'critical' as const,
       };
-      
+
       const error = new Error('Validation error');
       (error as any).response = {
         status: 400,
@@ -267,12 +270,7 @@ describe('UpdateFeatureTool', () => {
       };
       mockClient.patch.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update feature: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should handle concurrent update conflicts', async () => {
@@ -282,7 +280,7 @@ describe('UpdateFeatureTool', () => {
         status: 'validation' as const,
         priority: 'critical' as const,
       };
-      
+
       const error = new Error('Conflict');
       (error as any).response = {
         status: 409,
@@ -294,12 +292,7 @@ describe('UpdateFeatureTool', () => {
       };
       mockClient.patch.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update feature: Conflict',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Conflict');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -310,12 +303,8 @@ describe('UpdateFeatureTool', () => {
         status: 'validation' as const,
         priority: 'critical' as const,
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to update feature:'),
-      });
+
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
 
     it('should exclude ID from update payload', async () => {
@@ -341,7 +330,7 @@ describe('UpdateFeatureTool', () => {
 
       mockClient.patch.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.patch).toHaveBeenCalledWith('/features/feat_123', {
         name: 'Updated Name',
@@ -372,19 +361,18 @@ describe('UpdateFeatureTool', () => {
 
       mockClient.patch.mockResolvedValueOnce(updatedFeature);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'feat_123456',
         name: 'Completely Updated Feature',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: updatedFeature,
       });
-      
-      const responseData = (result as any).data;
-      expect(responseData.name).toBe('Completely Updated Feature');
-      expect(responseData.updated_at).not.toBe('2024-01-20T14:30:00Z');
+
+      expect(result.data.name).toBe('Completely Updated Feature');
+      expect(result.data.updated_at).not.toBe('2024-01-20T14:30:00Z');
     });
 
     it('should preserve unchanged fields', async () => {
@@ -409,18 +397,17 @@ describe('UpdateFeatureTool', () => {
 
       mockClient.patch.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(partialUpdate);
+      const result = parseResult(await tool.execute(partialUpdate));
 
       expect(result).toEqual({
         success: true,
         data: expectedResponse,
       });
-      
-      const responseData = (result as any).data;
-      expect(responseData.name).toBe('User Authentication Feature');
-      expect(responseData.description).toBe('Implement OAuth2 authentication for mobile app');
-      expect(responseData.status).toBe('in_progress');
-      expect(responseData.priority).toBe('low');
+
+      expect(result.data.name).toBe('User Authentication Feature');
+      expect(result.data.description).toBe('Implement OAuth2 authentication for mobile app');
+      expect(result.data.status).toBe('in_progress');
+      expect(result.data.priority).toBe('low');
     });
   });
 });

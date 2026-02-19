@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface ListKeyResultsParams {
   objective_id?: string;
@@ -53,33 +52,24 @@ export class ListKeyResultsTool extends BaseTool<ListKeyResultsParams> {
     );
   }
 
-  protected async executeInternal(params: ListKeyResultsParams = {}): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Listing key results');
+  protected async executeInternal(params: ListKeyResultsParams = {}): Promise<unknown> {
+    this.logger.info('Listing key results');
 
-      const queryParams: Record<string, any> = {};
-      if (params.objective_id) queryParams.objective_id = params.objective_id;
-      if (params.metric_type) queryParams.metric_type = params.metric_type;
-      if (params.limit) queryParams.limit = params.limit;
-      if (params.offset) queryParams.offset = params.offset;
+    const queryParams: Record<string, any> = {};
+    if (params.objective_id) queryParams.objective_id = params.objective_id;
+    if (params.metric_type) queryParams.metric_type = params.metric_type;
+    if (params.limit) queryParams.limit = params.limit;
+    if (params.offset) queryParams.offset = params.offset;
 
-      const response = await this.apiClient.makeRequest({
-        method: 'GET',
-        endpoint: '/keyresults',
-        params: queryParams,
-      });
+    const response = await this.apiClient.makeRequest({
+      method: 'GET',
+      endpoint: '/keyresults',
+      params: queryParams,
+    });
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to list key results', error);
-      
-      return {
-        success: false,
-        error: `Failed to list key results: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

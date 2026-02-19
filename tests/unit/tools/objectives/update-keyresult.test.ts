@@ -3,6 +3,14 @@ import { UpdateKeyResultTool } from '@tools/objectives/update-keyresult';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('UpdateKeyResultTool', () => {
   let tool: UpdateKeyResultTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -144,7 +152,7 @@ describe('UpdateKeyResultTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/keyresults/kr_123', {
         name: 'Updated Key Result',
@@ -177,7 +185,7 @@ describe('UpdateKeyResultTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/keyresults/kr_123', {
         current_value: 8000,
@@ -211,7 +219,7 @@ describe('UpdateKeyResultTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/keyresults/kr_123', {
         metric_type: 'percentage',
@@ -248,7 +256,7 @@ describe('UpdateKeyResultTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/keyresults/kr_123', {
         metric_type: 'currency',
@@ -267,8 +275,7 @@ describe('UpdateKeyResultTool', () => {
         id: 'kr_123',
       };
 
-      const result = await tool.execute(input);
-
+      const result = parseResult(await tool.execute(input));
       expect(result).toEqual({
         success: false,
         error: 'No update fields provided',
@@ -284,12 +291,7 @@ describe('UpdateKeyResultTool', () => {
       
       mockClient.put.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update key result: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle not found errors', async () => {
@@ -310,12 +312,7 @@ describe('UpdateKeyResultTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update key result: Key result not found',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Key result not found');
     });
 
     it('should handle authentication errors', async () => {
@@ -336,12 +333,7 @@ describe('UpdateKeyResultTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update key result: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle validation errors from API', async () => {
@@ -366,12 +358,7 @@ describe('UpdateKeyResultTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update key result: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -380,12 +367,7 @@ describe('UpdateKeyResultTool', () => {
         id: 'kr_123',
         current_value: 7500,
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to update key result:'),
-      });
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
   });
 
@@ -405,10 +387,10 @@ describe('UpdateKeyResultTool', () => {
 
       mockClient.put.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'kr_123',
         current_value: 7500,
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
@@ -433,10 +415,10 @@ describe('UpdateKeyResultTool', () => {
 
       mockClient.put.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'kr_123',
         current_value: 80,
-      });
+      }));
 
       expect(result).toEqual({
         success: true,

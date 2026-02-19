@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface SearchProductsParams {
   query: string;
@@ -54,34 +53,25 @@ export class SearchProductsTool extends BaseTool<SearchProductsParams> {
     );
   }
 
-  protected async executeInternal(params: SearchProductsParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Searching products', { query: params.query });
+  protected async executeInternal(params: SearchProductsParams): Promise<unknown> {
+    this.logger.info('Searching products', { query: params.query });
 
-      const queryParams: Record<string, any> = {
-        q: params.query,
-        include_components: params.includeComponents !== false,
-        limit: params.limit || 20,
-        offset: params.offset || 0,
-      };
+    const queryParams: Record<string, any> = {
+      q: params.query,
+      include_components: params.includeComponents !== false,
+      limit: params.limit || 20,
+      offset: params.offset || 0,
+    };
 
-      const response = await this.apiClient.makeRequest({
-        method: 'GET',
-        endpoint: '/search/products',
-        params: queryParams,
-      });
+    const response = await this.apiClient.makeRequest({
+      method: 'GET',
+      endpoint: '/search/products',
+      params: queryParams,
+    });
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to search products', error);
-      
-      return {
-        success: false,
-        error: `Failed to search products: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

@@ -3,6 +3,14 @@ import { SetCustomFieldValueTool } from '@tools/customfields/set-value';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('SetCustomFieldValueTool', () => {
   let tool: SetCustomFieldValueTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -111,7 +119,7 @@ describe('SetCustomFieldValueTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/customfields/cf_123/values', {
         entity_id: 'feat_123',
@@ -143,7 +151,7 @@ describe('SetCustomFieldValueTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/customfields/cf_456/values', {
         entity_id: 'feat_456',
@@ -175,7 +183,7 @@ describe('SetCustomFieldValueTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/customfields/cf_789/values', {
         entity_id: 'feat_789',
@@ -207,7 +215,7 @@ describe('SetCustomFieldValueTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/customfields/cf_890/values', {
         entity_id: 'feat_890',
@@ -239,7 +247,7 @@ describe('SetCustomFieldValueTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/customfields/cf_234/values', {
         entity_id: 'feat_234',
@@ -271,7 +279,7 @@ describe('SetCustomFieldValueTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/customfields/cf_567/values', {
         entity_id: 'feat_567',
@@ -303,7 +311,7 @@ describe('SetCustomFieldValueTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/customfields/cf_345/values', {
         entity_id: 'note_123',
@@ -335,7 +343,7 @@ describe('SetCustomFieldValueTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(result).toEqual({
         success: true,
@@ -362,7 +370,7 @@ describe('SetCustomFieldValueTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/customfields/cf_123/values', {
         entity_id: 'feat_123',
@@ -385,12 +393,7 @@ describe('SetCustomFieldValueTool', () => {
       
       mockClient.put.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to set custom field value: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -413,12 +416,7 @@ describe('SetCustomFieldValueTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to set custom field value: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle validation errors from API', async () => {
@@ -445,12 +443,7 @@ describe('SetCustomFieldValueTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to set custom field value: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should handle not found errors', async () => {
@@ -476,12 +469,7 @@ describe('SetCustomFieldValueTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to set custom field value: Not found',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Not found');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -492,12 +480,7 @@ describe('SetCustomFieldValueTool', () => {
         field_id: 'cf_123',
         value: 'High Priority',
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to set custom field value:'),
-      });
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
   });
 
@@ -515,23 +498,23 @@ describe('SetCustomFieldValueTool', () => {
 
       mockClient.put.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         entity_id: 'feat_123',
         entity_type: 'feature',
         field_id: 'cf_123',
         value: 'High Priority',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('entity_id', 'feat_123');
-      expect((result as any).data).toHaveProperty('entity_type', 'feature');
-      expect((result as any).data).toHaveProperty('field_id', 'cf_123');
-      expect((result as any).data).toHaveProperty('field_name', 'Priority Level');
-      expect((result as any).data).toHaveProperty('value', 'High Priority');
-      expect((result as any).data).toHaveProperty('updated_at');
+      expect(result.data).toHaveProperty('entity_id', 'feat_123');
+      expect(result.data).toHaveProperty('entity_type', 'feature');
+      expect(result.data).toHaveProperty('field_id', 'cf_123');
+      expect(result.data).toHaveProperty('field_name', 'Priority Level');
+      expect(result.data).toHaveProperty('value', 'High Priority');
+      expect(result.data).toHaveProperty('updated_at');
     });
   });
 });

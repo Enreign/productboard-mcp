@@ -3,6 +3,13 @@ import { ListWebhooksTool } from '@tools/webhooks/list-webhooks';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
 describe('ListWebhooksTool', () => {
   let tool: ListWebhooksTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -126,7 +133,7 @@ describe('ListWebhooksTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -160,7 +167,7 @@ describe('ListWebhooksTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -196,7 +203,7 @@ describe('ListWebhooksTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -241,7 +248,7 @@ describe('ListWebhooksTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -278,7 +285,7 @@ describe('ListWebhooksTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -297,12 +304,7 @@ describe('ListWebhooksTool', () => {
     it('should handle API errors gracefully', async () => {
       mockClient.makeRequest.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to list webhooks: API Error',
-      });
+      await expect(tool.execute({})).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -318,12 +320,7 @@ describe('ListWebhooksTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to list webhooks: Authentication failed',
-      });
+      await expect(tool.execute({})).rejects.toThrow('Authentication failed');
     });
 
     it('should handle forbidden errors (insufficient permissions)', async () => {
@@ -339,22 +336,13 @@ describe('ListWebhooksTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to list webhooks: Admin access required',
-      });
+      await expect(tool.execute({})).rejects.toThrow('Admin access required');
     });
 
     it('should throw error if client not initialized', async () => {
       const uninitializedTool = new ListWebhooksTool(null as any, mockLogger);
-      const result = await uninitializedTool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to list webhooks:'),
-      });
+
+      await expect(uninitializedTool.execute({})).rejects.toThrow();
     });
   });
 
@@ -377,19 +365,19 @@ describe('ListWebhooksTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('webhooks');
-      expect((result as any).data).toHaveProperty('total', 1);
-      expect((result as any).data.webhooks[0]).toHaveProperty('id', 'webhook_123');
-      expect((result as any).data.webhooks[0]).toHaveProperty('name', 'Test Webhook');
-      expect((result as any).data.webhooks[0]).toHaveProperty('url');
-      expect((result as any).data.webhooks[0]).toHaveProperty('events');
-      expect((result as any).data.webhooks[0]).toHaveProperty('active');
+      expect(result.data).toHaveProperty('webhooks');
+      expect(result.data).toHaveProperty('total', 1);
+      expect(result.data.webhooks[0]).toHaveProperty('id', 'webhook_123');
+      expect(result.data.webhooks[0]).toHaveProperty('name', 'Test Webhook');
+      expect(result.data.webhooks[0]).toHaveProperty('url');
+      expect(result.data.webhooks[0]).toHaveProperty('events');
+      expect(result.data.webhooks[0]).toHaveProperty('active');
     });
 
     it('should handle empty results', async () => {
@@ -400,14 +388,14 @@ describe('ListWebhooksTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data.webhooks).toHaveLength(0);
-      expect((result as any).data.total).toBe(0);
+      expect(result.data.webhooks).toHaveLength(0);
+      expect(result.data.total).toBe(0);
     });
 
     it('should handle webhooks with secrets masked', async () => {
@@ -438,14 +426,14 @@ describe('ListWebhooksTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data.webhooks[0]).toHaveProperty('secret', '***masked***');
-      expect((result as any).data.webhooks[1]).not.toHaveProperty('secret');
+      expect(result.data.webhooks[0]).toHaveProperty('secret', '***masked***');
+      expect(result.data.webhooks[1]).not.toHaveProperty('secret');
     });
 
     it('should handle multiple event types correctly', async () => {
@@ -473,15 +461,15 @@ describe('ListWebhooksTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data.webhooks[0].events).toHaveLength(6);
-      expect((result as any).data.webhooks[0].events).toContain('feature.created');
-      expect((result as any).data.webhooks[0].events).toContain('user.created');
+      expect(result.data.webhooks[0].events).toHaveLength(6);
+      expect(result.data.webhooks[0].events).toContain('feature.created');
+      expect(result.data.webhooks[0].events).toContain('user.created');
     });
 
     it('should handle different webhook statuses', async () => {
@@ -511,14 +499,14 @@ describe('ListWebhooksTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data.webhooks[0].active).toBe(true);
-      expect((result as any).data.webhooks[1].active).toBe(false);
+      expect(result.data.webhooks[0].active).toBe(true);
+      expect(result.data.webhooks[1].active).toBe(false);
     });
   });
 });

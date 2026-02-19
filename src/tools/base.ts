@@ -6,6 +6,10 @@ import { ValidationError as MCPValidationError, ToolExecutionError } from '../ut
 import { Logger } from '../utils/logger.js';
 import { Permission, AccessLevel, UserPermissions, ToolPermissionMetadata } from '../auth/permissions.js';
 
+export interface MCPToolContent {
+  content: Array<{ type: 'text'; text: string }>;
+}
+
 export abstract class BaseTool<TParams = unknown> implements Tool {
   public readonly name: string;
   public readonly description: string;
@@ -33,7 +37,7 @@ export abstract class BaseTool<TParams = unknown> implements Tool {
     this.validator = new Validator();
   }
 
-  async execute(params: TParams): Promise<unknown> {
+  async execute(params: TParams): Promise<MCPToolContent> {
     // Validate parameters
     const validation = this.validateParams(params);
     if (!validation.valid) {
@@ -45,7 +49,8 @@ export abstract class BaseTool<TParams = unknown> implements Tool {
 
     // Execute the tool-specific logic
     try {
-      return await this.executeInternal(params);
+      const result = await this.executeInternal(params);
+      return this.toMCPContent(result);
     } catch (error) {
       if (error instanceof Error) {
         throw new ToolExecutionError(
@@ -56,6 +61,15 @@ export abstract class BaseTool<TParams = unknown> implements Tool {
       }
       throw error;
     }
+  }
+
+  protected toMCPContent(data: unknown): MCPToolContent {
+    if (data && typeof data === 'object' && 'content' in data && Array.isArray((data as MCPToolContent).content)) {
+      return data as MCPToolContent;
+    }
+    return {
+      content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }],
+    };
   }
 
   protected abstract executeInternal(params: TParams): Promise<unknown>;

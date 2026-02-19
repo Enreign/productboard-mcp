@@ -1,26 +1,28 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { 
-  ListToolsRequestSchema, 
+import {
+  ListToolsRequestSchema,
   CallToolRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
 
-// Note: Resources and prompts support temporarily disabled to fix E2E tests
-// Will be re-enabled once core MCP functionality is working
-// import { 
-//   ListResourcesRequestSchema,
-//   ReadResourceRequestSchema,
-//   ListPromptsRequestSchema,
-//   GetPromptRequestSchema
-// } from '@modelcontextprotocol/sdk/types.js';
+function getPackageVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf-8'));
+    return pkg.version || '1.0.0';
+  } catch {
+    return '1.0.0';
+  }
+}
+const pkg = { version: getPackageVersion() };
+
 import {
   ServerMetrics,
   HealthStatus,
 } from './types.js';
 import { MCPProtocolHandler } from './protocol.js';
 import { ToolRegistry } from './registry.js';
-import { ResourceRegistry } from './resource-registry.js';
-import { PromptRegistry } from './prompt-registry.js';
 import { AuthenticationManager } from '@auth/index.js';
 import { AuthenticationType } from '@auth/types.js';
 import { PermissionDiscoveryService } from '@auth/permission-discovery.js';
@@ -36,8 +38,6 @@ export interface ServerDependencies {
   authManager: AuthenticationManager;
   apiClient: ProductboardAPIClient;
   toolRegistry: ToolRegistry;
-  resourceRegistry: ResourceRegistry;
-  promptRegistry: PromptRegistry;
   rateLimiter: RateLimiter;
   cache: CacheModule;
   protocolHandler: MCPProtocolHandler;
@@ -78,6 +78,7 @@ export class ProductboardMCPServer {
         token: config.auth.token,
         clientId: config.auth.clientId,
         clientSecret: config.auth.clientSecret,
+        redirectUri: config.auth.redirectUri,
       },
       baseUrl: config.api.baseUrl,
     };
@@ -113,8 +114,6 @@ export class ProductboardMCPServer {
 
     const cache = new CacheModule(config.cache);
     const toolRegistry = new ToolRegistry(logger);
-    const resourceRegistry = new ResourceRegistry(logger);
-    const promptRegistry = new PromptRegistry(logger);
     const protocolHandler = new MCPProtocolHandler(toolRegistry, logger);
     const permissionDiscovery = new PermissionDiscoveryService(apiClient, logger);
 
@@ -124,8 +123,6 @@ export class ProductboardMCPServer {
       authManager,
       apiClient,
       toolRegistry,
-      resourceRegistry,
-      promptRegistry,
       rateLimiter,
       cache,
       protocolHandler,
@@ -148,7 +145,7 @@ export class ProductboardMCPServer {
       // Initialize MCP server first to start listening for protocol messages
       this.initializeMCPServer();
 
-      // Validate authentication (skip in test mode)
+      // Skip network operations in test mode to allow unit testing without API access
       if (process.env.NODE_ENV !== 'test') {
         logger.info('Validating authentication...');
         const isAuthenticated = await authManager.validateCredentials();
@@ -228,27 +225,21 @@ export class ProductboardMCPServer {
 
   private initializeMCPServer(): void {
     const { logger, toolRegistry } = this.dependencies;
-    // const { resourceRegistry, promptRegistry } = this.dependencies; // Temporarily disabled
 
-    // Create server with proper SDK constructor signature
     this.server = new Server(
       {
         name: 'productboard-mcp',
-        version: '1.0.0',
+        version: pkg.version,
       },
       {
         capabilities: {
           tools: {},
-          // resources: {}, // Temporarily disabled
-          // prompts: {},   // Temporarily disabled
         },
       },
     );
 
     this.transport = new StdioServerTransport();
 
-    // Set up request handlers using proper SDK types
-    
     // Tools handlers
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
@@ -256,52 +247,7 @@ export class ProductboardMCPServer {
       };
     });
 
-    // Resources and prompts handlers temporarily disabled for E2E test fixes
-    // TODO: Re-enable once schema imports are fixed
-    
-    // Resources handlers
-    // this.server.setRequestHandler(ListResourcesRequestSchema, async () => {
-    //   return {
-    //     resources: resourceRegistry.listResources(),
-    //   };
-    // });
-
-    // this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-    //   const { uri } = request.params as { uri: string };
-    //   const resource = resourceRegistry.getResourceByUri(uri);
-    //   
-    //   if (!resource) {
-    //     throw new Error(`Resource not found: ${uri}`);
-    //   }
-
-    //   const content = await resource.retrieve();
-    //   return {
-    //     contents: [content],
-    //   };
-    // });
-
-    // Prompts handlers  
-    // this.server.setRequestHandler(ListPromptsRequestSchema, async () => {
-    //   return {
-    //     prompts: promptRegistry.listPrompts(),
-    //   };
-    // });
-
-    // this.server.setRequestHandler(GetPromptRequestSchema, async (request) => {
-    //   const { name, arguments: args } = request.params as { name: string; arguments?: any };
-    //   const prompt = promptRegistry.getPrompt(name);
-    //   
-    //   if (!prompt) {
-    //     throw new Error(`Prompt not found: ${name}`);
-    //   }
-
-    //   const messages = await prompt.execute(args);
-    //   return {
-    //     messages,
-    //   };
-    // });
-
-    // Set up tool execution handler with proper error handling
+    // Tool execution handler
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const startTime = Date.now();
       this.metrics.requestsTotal++;
@@ -330,9 +276,8 @@ export class ProductboardMCPServer {
         this.metrics.requestsFailed++;
         logger.error('Tool execution failed', error);
 
-        const toolName = request.params && typeof request.params === 'object' && 'name' in request.params && typeof (request.params as any).name === 'string'
-          ? (request.params as any).name
-          : 'unknown';
+        const params = request.params as Record<string, unknown> | undefined;
+        const toolName = params && typeof params.name === 'string' ? params.name : 'unknown';
 
         // For read-only tools, return a safe, non-throwing result to avoid 500s in clients
         try {
@@ -342,11 +287,11 @@ export class ProductboardMCPServer {
             return {
               content: [
                 {
-                  type: 'text',
+                  type: 'text' as const,
                   text: `Error executing ${toolName}: ${String(message)}`,
                 },
               ],
-            } as any;
+            };
           }
         } catch (lookupError) {
           // If tool lookup fails, fall through to standard error handling
@@ -481,7 +426,7 @@ export class ProductboardMCPServer {
     
     return {
       status: 'healthy',
-      version: '1.0.0',
+      version: pkg.version,
       uptime,
       checks: {
         api: true,

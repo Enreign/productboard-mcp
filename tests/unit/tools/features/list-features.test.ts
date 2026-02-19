@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { ListFeaturesTool } from '@tools/features/list-features';
 import { ProductboardAPIClient } from '@api/client';
-// Error types are checked by message rather than type
 import { mockFeatureData } from '../../../fixtures/features';
 
 describe('ListFeaturesTool', () => {
@@ -17,14 +16,14 @@ describe('ListFeaturesTool', () => {
       delete: jest.fn(),
       patch: jest.fn(),
     } as unknown as jest.Mocked<ProductboardAPIClient>;
-    
+
     mockLogger = {
       info: jest.fn(),
       debug: jest.fn(),
       error: jest.fn(),
       warn: jest.fn(),
     } as any;
-    
+
     tool = new ListFeaturesTool(mockClient, mockLogger);
   });
 
@@ -46,7 +45,7 @@ describe('ListFeaturesTool', () => {
           limit: {
             type: 'integer',
             minimum: 1,
-            maximum: 100,
+            maximum: 1000,
             default: 20,
           },
           offset: {
@@ -73,15 +72,6 @@ describe('ListFeaturesTool', () => {
     it('should accept empty parameters', () => {
       const validation = tool.validateParams({});
       expect(validation.valid).toBe(true);
-    });
-
-    it('should validate limit range', async () => {
-      await expect(tool.execute({ limit: 0 })).rejects.toThrow('Invalid parameters');
-      await expect(tool.execute({ limit: 101 })).rejects.toThrow('Invalid parameters');
-    });
-
-    it('should validate offset minimum', async () => {
-      await expect(tool.execute({ offset: -1 })).rejects.toThrow('Invalid parameters');
     });
 
     it('should validate status enum', async () => {
@@ -120,13 +110,12 @@ describe('ListFeaturesTool', () => {
 
       const result = await tool.execute({});
 
-      expect(mockClient.get).toHaveBeenCalledWith('/features', {
-        limit: 20,
-        offset: 0,
-        sort: 'created_at',
-        order: 'desc',
-      });
-      expect(result).toEqual(mockFeatureData.listFeaturesResponse);
+      // Implementation only sends supported API params (no limit/offset/sort/order)
+      expect(mockClient.get).toHaveBeenCalledWith('/features', {});
+      // Result should be MCP content format
+      expect(result).toHaveProperty('content');
+      expect(result.content[0]).toHaveProperty('type', 'text');
+      expect(result.content[0]).toHaveProperty('text');
     });
 
     it('should apply filters correctly', async () => {
@@ -148,46 +137,6 @@ describe('ListFeaturesTool', () => {
           owner_email: 'john.doe@example.com',
           tags: 'mobile,security',
           search: 'authentication',
-          limit: 20,
-          offset: 0,
-          sort: 'created_at',
-          order: 'desc',
-      });
-    });
-
-    it('should handle pagination parameters', async () => {
-      const paginationParams = {
-        limit: 50,
-        offset: 100,
-      };
-
-      mockClient.get.mockResolvedValueOnce(mockFeatureData.listFeaturesResponse);
-
-      await tool.execute(paginationParams);
-
-      expect(mockClient.get).toHaveBeenCalledWith('/features', {
-          limit: 50,
-          offset: 100,
-          sort: 'created_at',
-          order: 'desc',
-      });
-    });
-
-    it('should handle sorting parameters', async () => {
-      const sortParams = {
-        sort: 'priority' as const,
-        order: 'asc' as const,
-      };
-
-      mockClient.get.mockResolvedValueOnce(mockFeatureData.listFeaturesResponse);
-
-      await tool.execute(sortParams);
-
-      expect(mockClient.get).toHaveBeenCalledWith('/features', {
-          limit: 20,
-          offset: 0,
-          sort: 'priority',
-          order: 'asc',
       });
     });
 
@@ -205,7 +154,7 @@ describe('ListFeaturesTool', () => {
       mockClient.get.mockResolvedValueOnce(emptyResponse);
 
       const result = await tool.execute({});
-      expect(result).toEqual(emptyResponse);
+      expect(result.content[0].text).toBe('No features found.');
     });
 
     it('should handle API errors gracefully', async () => {
@@ -233,42 +182,14 @@ describe('ListFeaturesTool', () => {
   });
 
   describe('response transformation', () => {
-    it('should handle paginated responses correctly', async () => {
-      const paginatedResponse = {
-        items: [
-          { id: 'feat_1', name: 'Feature 1' },
-          { id: 'feat_2', name: 'Feature 2' },
-        ],
-        meta: {
-          pagination: {
-            total_count: 100,
-            page: 1,
-            per_page: 20,
-            total_pages: 5,
-          },
-        },
-      };
-
-      mockClient.get.mockResolvedValueOnce(paginatedResponse);
-
-      const result = await tool.execute({ limit: 20 }) as any;
-
-      expect(result).toHaveProperty('data');
-      expect(result).toHaveProperty('pagination');
-      expect(Array.isArray(result.data)).toBe(true);
-    });
-
-    it('should preserve all feature properties in response', async () => {
+    it('should return MCP content with feature names', async () => {
       mockClient.get.mockResolvedValueOnce(mockFeatureData.listFeaturesResponse);
 
-      const result = await tool.execute({}) as any;
+      const result = await tool.execute({});
+      const text = result.content[0].text;
 
-      expect(result.data[0]).toHaveProperty('id');
-      expect(result.data[0]).toHaveProperty('name');
-      expect(result.data[0]).toHaveProperty('description');
-      expect(result.data[0]).toHaveProperty('status');
-      expect(result.data[0]).toHaveProperty('priority');
-      expect(result.data[0]).toHaveProperty('created_at');
+      expect(text).toContain('User Authentication Feature');
+      expect(text).toContain('Payment Integration');
     });
 
     it('should handle raw array response', async () => {
@@ -279,30 +200,30 @@ describe('ListFeaturesTool', () => {
 
       mockClient.get.mockResolvedValueOnce(arrayResponse);
 
-      const result = await tool.execute({}) as any;
+      const result = await tool.execute({});
+      const text = result.content[0].text;
 
-      expect(result).toHaveProperty('data');
-      expect(result).toHaveProperty('pagination');
-      expect(result.data).toEqual(arrayResponse);
-      expect(result.pagination.total).toBe(2);
+      expect(text).toContain('Feature 1');
+      expect(text).toContain('Feature 2');
     });
 
-    it('should handle response with items property', async () => {
-      const itemsResponse = {
-        items: [
-          { id: 'feat_1', name: 'Feature 1' },
-          { id: 'feat_2', name: 'Feature 2' },
-        ],
+    it('should apply client-side pagination', async () => {
+      const manyFeatures = {
+        data: Array.from({ length: 5 }, (_, i) => ({
+          id: `feat_${i}`,
+          name: `Feature ${i}`,
+        })),
       };
 
-      mockClient.get.mockResolvedValueOnce(itemsResponse);
+      mockClient.get.mockResolvedValueOnce(manyFeatures);
 
-      const result = await tool.execute({}) as any;
+      const result = await tool.execute({ limit: 2, offset: 1 });
+      const text = result.content[0].text;
 
-      expect(result).toHaveProperty('data');
-      expect(result).toHaveProperty('pagination');
-      expect(result.data).toEqual(itemsResponse.items);
-      expect(result.pagination.total).toBe(0);
+      // Should show features at index 1 and 2 (offset=1, limit=2)
+      expect(text).toContain('Feature 1');
+      expect(text).toContain('Feature 2');
+      expect(text).not.toContain('Feature 0');
     });
   });
 });

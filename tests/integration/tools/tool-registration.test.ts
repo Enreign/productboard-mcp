@@ -156,14 +156,8 @@ describe('Tool Registration Integration', () => {
       const tool = new CurrentUserTool(mockApiClient, mockLogger);
       registry.registerTool(tool);
 
-      const mockUser = {
-        id: 'user-1',
-        email: 'test@example.com',
-        role: 'admin',
-      };
-
       mockApiClient.makeRequest.mockResolvedValue({
-        data: mockUser,
+        data: [{ id: 'feature-1' }],
         links: {},
       });
 
@@ -171,10 +165,7 @@ describe('Tool Registration Integration', () => {
       expect(registeredTool).toBeTruthy();
 
       const result = await registeredTool!.execute({});
-      expect(result).toEqual({
-        success: true,
-        data: mockUser,
-      });
+      expect(result.content[0].text).toContain('Authentication verified');
     });
   });
 

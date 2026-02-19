@@ -19,12 +19,16 @@ export interface MCPError {
   data?: unknown;
 }
 
+export interface MCPToolContent {
+  content: Array<{ type: 'text'; text: string }>;
+}
+
 export interface Tool {
   name: string;
   description: string;
   parameters: Schema;
   permissionMetadata: ToolPermissionMetadata;
-  execute(params: unknown): Promise<unknown>;
+  execute(params: unknown): Promise<MCPToolContent>;
   isAvailableForUser(userPermissions: UserPermissions): boolean;
 }
 
@@ -33,12 +37,6 @@ export interface ToolDescriptor {
   description: string;
   inputSchema: Schema;
   permissions?: ToolPermissionMetadata;
-}
-
-export interface ToolExecutionResult {
-  success: boolean;
-  data?: unknown;
-  error?: string;
 }
 
 export interface ServerMetrics {
@@ -64,66 +62,7 @@ export interface HealthStatus {
 export interface ProtocolHandler {
   parseRequest(input: string): MCPRequest;
   formatResponse(response: MCPResponse): string;
-  validateRequest(request: MCPRequest): ValidationResult;
-}
-
-export interface ValidationResult {
-  valid: boolean;
-  errors?: string[];
-}
-
-// Resource types
-export interface Resource {
-  name: string;
-  description: string;
-  uri: string;
-  mimeType?: string;
-  retrieve(): Promise<ResourceContent>;
-}
-
-export interface ResourceDescriptor {
-  name: string;
-  description: string;
-  uri: string;
-  mimeType?: string;
-}
-
-export interface ResourceContent {
-  uri: string;
-  mimeType?: string;
-  text?: string;
-  blob?: string;
-}
-
-// Prompt types
-export interface Prompt {
-  name: string;
-  description: string;
-  arguments?: PromptArgument[];
-  execute(params: unknown): Promise<PromptMessage[]>;
-}
-
-export interface PromptDescriptor {
-  name: string;
-  description: string;
-  arguments?: PromptArgument[];
-}
-
-export interface PromptArgument {
-  name: string;
-  description: string;
-  required?: boolean;
-}
-
-export interface PromptMessage {
-  role: 'user' | 'assistant' | 'system';
-  content: {
-    type: 'text' | 'image';
-    text?: string;
-    image_url?: {
-      url: string;
-    };
-  };
+  validateRequest(request: MCPRequest): import('@middleware/types.js').ValidationResult;
 }
 
 // Sampling configuration types

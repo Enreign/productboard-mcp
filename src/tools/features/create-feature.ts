@@ -1,21 +1,10 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
+import { FeaturePayload } from './types.js';
 
-interface CreateFeatureParams {
-  name: string;
-  description: string;
-  status?: 'new' | 'in_progress' | 'validation' | 'done' | 'archived';
-  product_id?: string;
-  component_id?: string;
-  owner_email?: string;
-  tags?: string[];
-  priority?: 'critical' | 'high' | 'medium' | 'low';
-}
-
-export class CreateFeatureTool extends BaseTool<CreateFeatureParams> {
+export class CreateFeatureTool extends BaseTool<FeaturePayload> {
   constructor(apiClient: ProductboardAPIClient, logger: Logger) {
     super(
       'pb_feature_create',
@@ -74,27 +63,18 @@ export class CreateFeatureTool extends BaseTool<CreateFeatureParams> {
     );
   }
 
-  protected async executeInternal(params: CreateFeatureParams): Promise<ToolExecutionResult> {
-    try {
-      // Set default status if not provided
-      const requestData = {
-        ...params,
-        status: params.status || 'new',
-      };
+  protected async executeInternal(params: FeaturePayload): Promise<unknown> {
+    // Set default status if not provided
+    const requestData = {
+      ...params,
+      status: params.status || 'new',
+    };
 
-      const response = await this.apiClient.post('/features', requestData);
+    const response = await this.apiClient.post('/features', requestData);
 
-      return {
-        success: true,
-        data: (response as any).data || response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to create feature', error);
-      
-      return {
-        success: false,
-        error: `Failed to create feature: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: (response as any).data || response,
+    };
   }
 }

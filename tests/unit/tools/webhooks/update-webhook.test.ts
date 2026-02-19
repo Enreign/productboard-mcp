@@ -3,6 +3,13 @@ import { UpdateWebhookTool } from '@tools/webhooks/update-webhook';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
 describe('UpdateWebhookTool', () => {
   let tool: UpdateWebhookTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -172,7 +179,7 @@ describe('UpdateWebhookTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/webhooks/webhook_123', {
         name: 'Updated Webhook',
@@ -203,7 +210,7 @@ describe('UpdateWebhookTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/webhooks/webhook_123', {
         name: 'New Name',
@@ -231,7 +238,7 @@ describe('UpdateWebhookTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/webhooks/webhook_123', {
         url: 'https://new-endpoint.example.com/webhook',
@@ -259,7 +266,7 @@ describe('UpdateWebhookTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/webhooks/webhook_123', {
         events: ['note.created', 'note.updated', 'user.created'],
@@ -288,7 +295,7 @@ describe('UpdateWebhookTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/webhooks/webhook_123', {
         secret: 'new_secret_key_456',
@@ -316,7 +323,7 @@ describe('UpdateWebhookTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/webhooks/webhook_123', {
         active: false,
@@ -344,7 +351,7 @@ describe('UpdateWebhookTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/webhooks/webhook_123', {
         active: true,
@@ -372,7 +379,7 @@ describe('UpdateWebhookTool', () => {
       
       mockClient.put.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.put).toHaveBeenCalledWith('/webhooks/webhook_123', {
         events: [],
@@ -388,12 +395,7 @@ describe('UpdateWebhookTool', () => {
         id: 'webhook_123',
       };
 
-      const result = await tool.execute(input);
-
-      expect(result).toEqual({
-        success: false,
-        error: 'No update fields provided',
-      });
+      await expect(tool.execute(input)).rejects.toThrow('No update fields provided');
       expect(mockClient.put).not.toHaveBeenCalled();
     });
 
@@ -402,15 +404,10 @@ describe('UpdateWebhookTool', () => {
         id: 'webhook_123',
         name: 'Updated Webhook',
       };
-      
+
       mockClient.put.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update webhook: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle not found errors', async () => {
@@ -418,7 +415,7 @@ describe('UpdateWebhookTool', () => {
         id: 'webhook_nonexistent',
         name: 'Updated Webhook',
       };
-      
+
       const error = new Error('Webhook not found');
       (error as any).response = {
         status: 404,
@@ -431,12 +428,7 @@ describe('UpdateWebhookTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update webhook: Webhook not found',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Webhook not found');
     });
 
     it('should handle authentication errors', async () => {
@@ -444,7 +436,7 @@ describe('UpdateWebhookTool', () => {
         id: 'webhook_123',
         name: 'Updated Webhook',
       };
-      
+
       const error = new Error('Authentication failed');
       (error as any).response = {
         status: 401,
@@ -457,12 +449,7 @@ describe('UpdateWebhookTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update webhook: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle forbidden errors (insufficient permissions)', async () => {
@@ -470,7 +457,7 @@ describe('UpdateWebhookTool', () => {
         id: 'webhook_123',
         name: 'Updated Webhook',
       };
-      
+
       const error = new Error('Admin access required');
       (error as any).response = {
         status: 403,
@@ -483,12 +470,7 @@ describe('UpdateWebhookTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update webhook: Admin access required',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Admin access required');
     });
 
     it('should handle validation errors from API', async () => {
@@ -496,7 +478,7 @@ describe('UpdateWebhookTool', () => {
         id: 'webhook_123',
         url: 'https://unreachable-domain.invalid/webhook',
       };
-      
+
       const error = new Error('Validation error');
       (error as any).response = {
         status: 400,
@@ -513,12 +495,7 @@ describe('UpdateWebhookTool', () => {
       };
       mockClient.put.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to update webhook: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -527,12 +504,8 @@ describe('UpdateWebhookTool', () => {
         id: 'webhook_123',
         name: 'Updated Webhook',
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to update webhook:'),
-      });
+
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
   });
 
@@ -550,18 +523,18 @@ describe('UpdateWebhookTool', () => {
 
       mockClient.put.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'webhook_123',
         name: 'Updated Webhook',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('id', 'webhook_123');
-      expect((result as any).data).toHaveProperty('name', 'Updated Webhook');
-      expect((result as any).data).toHaveProperty('updated_at');
+      expect(result.data).toHaveProperty('id', 'webhook_123');
+      expect(result.data).toHaveProperty('name', 'Updated Webhook');
+      expect(result.data).toHaveProperty('updated_at');
     });
 
     it('should handle response with masked secret', async () => {
@@ -578,16 +551,16 @@ describe('UpdateWebhookTool', () => {
 
       mockClient.put.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'webhook_123',
         secret: 'new_secret_key',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('secret', '***masked***');
+      expect(result.data).toHaveProperty('secret', '***masked***');
     });
 
     it('should handle response with empty events array', async () => {
@@ -603,16 +576,16 @@ describe('UpdateWebhookTool', () => {
 
       mockClient.put.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         id: 'webhook_123',
         events: [],
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data.events).toHaveLength(0);
+      expect(result.data.events).toHaveLength(0);
     });
   });
 });

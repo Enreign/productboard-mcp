@@ -5,6 +5,14 @@ import { Logger } from '@utils/logger';
 // Error types are checked by message rather than type
 import { mockFeatureData, mockApiResponses } from '../../../fixtures/features';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('DeleteFeatureTool', () => {
   let tool: DeleteFeatureTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -90,7 +98,7 @@ describe('DeleteFeatureTool', () => {
     it('should archive feature by default', async () => {
       mockClient.patch.mockResolvedValueOnce(mockApiResponses.archiveSuccess.data);
 
-      const result = await tool.execute({ id: 'feat_123456' });
+      const result = parseResult(await tool.execute({ id: 'feat_123456' }));
 
       expect(mockClient.patch).toHaveBeenCalledWith(
         '/features/feat_123456',
@@ -109,7 +117,7 @@ describe('DeleteFeatureTool', () => {
     it('should archive when permanent is false', async () => {
       mockClient.patch.mockResolvedValueOnce(mockApiResponses.archiveSuccess.data);
 
-      const result = await tool.execute({ id: 'feat_123456', permanent: false }) as any;
+      const result = parseResult(await tool.execute({ id: 'feat_123456', permanent: false }));
 
       expect(mockClient.patch).toHaveBeenCalledWith(
         '/features/feat_123456',
@@ -123,7 +131,7 @@ describe('DeleteFeatureTool', () => {
     it('should permanently delete when permanent is true', async () => {
       mockClient.delete.mockResolvedValueOnce(undefined);
 
-      const result = await tool.execute({ id: 'feat_123456', permanent: true });
+      const result = parseResult(await tool.execute({ id: 'feat_123456', permanent: true }));
 
       expect(mockClient.delete).toHaveBeenCalledWith('/features/feat_123456');
       expect(mockClient.patch).not.toHaveBeenCalled();
@@ -144,12 +152,7 @@ describe('DeleteFeatureTool', () => {
       };
       mockClient.patch.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({ id: 'feat_nonexistent' });
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to delete feature: Not found',
-      });
+      await expect(tool.execute({ id: 'feat_nonexistent' })).rejects.toThrow('Not found');
     });
 
     it('should handle already archived feature', async () => {
@@ -164,12 +167,7 @@ describe('DeleteFeatureTool', () => {
       };
       mockClient.patch.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({ id: 'feat_123456' });
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to delete feature: Already archived',
-      });
+      await expect(tool.execute({ id: 'feat_123456' })).rejects.toThrow('Already archived');
     });
 
     it('should handle permission denied error', async () => {
@@ -184,12 +182,7 @@ describe('DeleteFeatureTool', () => {
       };
       mockClient.delete.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({ id: 'feat_123456', permanent: true });
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to delete feature: Permission denied',
-      });
+      await expect(tool.execute({ id: 'feat_123456', permanent: true })).rejects.toThrow('Permission denied');
     });
 
     it('should handle features with dependencies', async () => {
@@ -207,32 +200,18 @@ describe('DeleteFeatureTool', () => {
       };
       mockClient.delete.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({ id: 'feat_123456', permanent: true });
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to delete feature: Conflict',
-      });
+      await expect(tool.execute({ id: 'feat_123456', permanent: true })).rejects.toThrow('Conflict');
     });
 
     it('should throw error if client not initialized', async () => {
       const uninitializedTool = new DeleteFeatureTool(null as any, mockLogger);
-      const result = await uninitializedTool.execute({ id: 'feat_123456' });
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to delete feature'),
-      });
+      await expect(uninitializedTool.execute({ id: 'feat_123456' })).rejects.toThrow();
     });
 
     it('should handle network errors gracefully', async () => {
       mockClient.patch.mockRejectedValueOnce(new Error('Network timeout'));
 
-      const result = await tool.execute({ id: 'feat_123456' });
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to delete feature: Network timeout',
-      });
+      await expect(tool.execute({ id: 'feat_123456' })).rejects.toThrow('Network timeout');
     });
   });
 
@@ -246,7 +225,7 @@ describe('DeleteFeatureTool', () => {
 
       mockClient.patch.mockResolvedValueOnce(archivedFeature);
 
-      const result = await tool.execute({ id: 'feat_123456' }) as any;
+      const result = parseResult(await tool.execute({ id: 'feat_123456' }));
 
       expect(result).toEqual({
         success: true,
@@ -262,7 +241,7 @@ describe('DeleteFeatureTool', () => {
     it('should return minimal response for permanent deletion', async () => {
       mockClient.delete.mockResolvedValueOnce(undefined);
 
-      const result = await tool.execute({ id: 'feat_123456', permanent: true });
+      const result = parseResult(await tool.execute({ id: 'feat_123456', permanent: true }));
 
       expect(result).toEqual({
         success: true,
@@ -276,7 +255,7 @@ describe('DeleteFeatureTool', () => {
     it('should handle delete with response body', async () => {
       mockClient.delete.mockResolvedValueOnce(undefined);
 
-      const result = await tool.execute({ id: 'feat_123456', permanent: true }) as any;
+      const result = parseResult(await tool.execute({ id: 'feat_123456', permanent: true }));
 
       expect(result.success).toBe(true);
       expect(result.data.action).toBe('deleted');

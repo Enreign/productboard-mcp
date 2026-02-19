@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface UpdateReleaseParams {
   id: string;
@@ -60,32 +59,23 @@ export class UpdateReleaseTool extends BaseTool<UpdateReleaseParams> {
     );
   }
 
-  protected async executeInternal(params: UpdateReleaseParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Updating release', { id: params.id });
+  protected async executeInternal(params: UpdateReleaseParams): Promise<unknown> {
+    this.logger.info('Updating release', { id: params.id });
 
-      const { id, ...updateData } = params;
-      
-      if (Object.keys(updateData).length === 0) {
-        return {
-          success: false,
-          error: 'No update fields provided',
-        };
-      }
+    const { id, ...updateData } = params;
 
-      const response = await this.apiClient.put(`/releases/${id}`, updateData);
-
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to update release', error);
-      
+    if (Object.keys(updateData).length === 0) {
       return {
         success: false,
-        error: `Failed to update release: ${(error as Error).message}`,
+        error: 'No update fields provided',
       };
     }
+
+    const response = await this.apiClient.put(`/releases/${id}`, updateData);
+
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

@@ -5,6 +5,8 @@ import { CacheOptions, CacheableRequest } from './types.js';
 export class CacheModule {
   private cache?: LRUCache<string, any>;
   private readonly enabled: boolean;
+  private hits = 0;
+  private misses = 0;
 
   constructor(options: CacheOptions) {
     this.enabled = options.enabled;
@@ -23,8 +25,14 @@ export class CacheModule {
     if (!this.enabled || !this.cache) {
       return null;
     }
-    
-    return this.cache.get(key) as T | null;
+
+    const value = this.cache.get(key) as T | undefined;
+    if (value !== undefined) {
+      this.hits++;
+      return value;
+    }
+    this.misses++;
+    return null;
   }
 
   set<T>(key: string, value: T, ttl?: number): void {
@@ -89,8 +97,8 @@ export class CacheModule {
     }
     
     return {
-      hits: 0, // LRUCache doesn't track hits/misses by default
-      misses: 0,
+      hits: this.hits,
+      misses: this.misses,
       size: this.cache.size,
     };
   }

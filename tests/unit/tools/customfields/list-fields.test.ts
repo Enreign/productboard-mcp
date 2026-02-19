@@ -3,6 +3,14 @@ import { ListCustomFieldsTool } from '@tools/customfields/list-fields';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('ListCustomFieldsTool', () => {
   let tool: ListCustomFieldsTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -127,7 +135,7 @@ describe('ListCustomFieldsTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -170,7 +178,7 @@ describe('ListCustomFieldsTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -217,7 +225,7 @@ describe('ListCustomFieldsTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -263,7 +271,7 @@ describe('ListCustomFieldsTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -301,7 +309,7 @@ describe('ListCustomFieldsTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -330,7 +338,7 @@ describe('ListCustomFieldsTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(result).toEqual({
         success: true,
@@ -341,12 +349,7 @@ describe('ListCustomFieldsTool', () => {
     it('should handle API errors gracefully', async () => {
       mockClient.makeRequest.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to list custom fields: API Error',
-      });
+      await expect(tool.execute({})).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -362,19 +365,14 @@ describe('ListCustomFieldsTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to list custom fields: Authentication failed',
-      });
+      await expect(tool.execute({})).rejects.toThrow('Authentication failed');
     });
 
     it('should handle validation errors from API', async () => {
       const input = {
         entity_type: 'feature' as const,
       };
-      
+
       const error = new Error('Validation error');
       (error as any).response = {
         status: 400,
@@ -389,22 +387,13 @@ describe('ListCustomFieldsTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(input);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to list custom fields: Validation error',
-      });
+      await expect(tool.execute(input)).rejects.toThrow('Validation error');
     });
 
     it('should throw error if client not initialized', async () => {
       const uninitializedTool = new ListCustomFieldsTool(null as any, mockLogger);
-      const result = await uninitializedTool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to list custom fields:'),
-      });
+
+      await expect(uninitializedTool.execute({})).rejects.toThrow();
     });
   });
 
@@ -427,17 +416,17 @@ describe('ListCustomFieldsTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('fields');
-      expect((result as any).data).toHaveProperty('total', 1);
-      expect((result as any).data.fields[0]).toHaveProperty('id', 'cf_123');
-      expect((result as any).data.fields[0]).toHaveProperty('name', 'Priority Level');
-      expect((result as any).data.fields[0]).toHaveProperty('type', 'text');
+      expect(result.data).toHaveProperty('fields');
+      expect(result.data).toHaveProperty('total', 1);
+      expect(result.data.fields[0]).toHaveProperty('id', 'cf_123');
+      expect(result.data.fields[0]).toHaveProperty('name', 'Priority Level');
+      expect(result.data.fields[0]).toHaveProperty('type', 'text');
     });
 
     it('should transform API response with select field options', async () => {
@@ -459,14 +448,14 @@ describe('ListCustomFieldsTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({ type: 'select' });
+      const result = parseResult(await tool.execute({ type: 'select' }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data.fields[0]).toHaveProperty('options');
-      expect((result as any).data.fields[0].options).toEqual(['draft', 'review', 'approved', 'rejected']);
+      expect(result.data.fields[0]).toHaveProperty('options');
+      expect(result.data.fields[0].options).toEqual(['draft', 'review', 'approved', 'rejected']);
     });
   });
 });

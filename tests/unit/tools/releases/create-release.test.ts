@@ -3,6 +3,14 @@ import { CreateReleaseTool } from '@tools/releases/create-release';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('CreateReleaseTool', () => {
   let tool: CreateReleaseTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -110,7 +118,7 @@ describe('CreateReleaseTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/releases', validInput);
       expect(result).toEqual({
@@ -132,10 +140,10 @@ describe('CreateReleaseTool', () => {
         created_at: '2024-01-10T10:00:00Z',
         updated_at: '2024-01-10T10:00:00Z',
       };
-      
+
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(minimalInput);
+      const result = parseResult(await tool.execute(minimalInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/releases', minimalInput);
       expect(result).toEqual({
@@ -149,15 +157,10 @@ describe('CreateReleaseTool', () => {
         name: 'v1.0.0',
         date: '2024-01-15',
       };
-      
+
       mockClient.post.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create release: API Error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -165,7 +168,7 @@ describe('CreateReleaseTool', () => {
         name: 'v1.0.0',
         date: '2024-01-15',
       };
-      
+
       const error = new Error('Authentication failed');
       (error as any).response = {
         status: 401,
@@ -178,12 +181,7 @@ describe('CreateReleaseTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create release: Authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Authentication failed');
     });
 
     it('should handle validation errors from API', async () => {
@@ -191,7 +189,7 @@ describe('CreateReleaseTool', () => {
         name: 'v1.0.0',
         date: '2024-01-15',
       };
-      
+
       const error = new Error('Validation error');
       (error as any).response = {
         status: 400,
@@ -209,12 +207,7 @@ describe('CreateReleaseTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to create release: Validation error',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('Validation error');
     });
 
     it('should throw error if client not initialized', async () => {
@@ -223,12 +216,8 @@ describe('CreateReleaseTool', () => {
         name: 'v1.0.0',
         date: '2024-01-15',
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to create release:'),
-      });
+
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
   });
 
@@ -245,18 +234,18 @@ describe('CreateReleaseTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         name: 'v1.0.0',
         date: '2024-01-15',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('id', 'rel_123');
-      expect((result as any).data).toHaveProperty('name', 'v1.0.0');
-      expect((result as any).data).toHaveProperty('date', '2024-01-15');
+      expect(result.data).toHaveProperty('id', 'rel_123');
+      expect(result.data).toHaveProperty('name', 'v1.0.0');
+      expect(result.data).toHaveProperty('date', '2024-01-15');
     });
   });
 });

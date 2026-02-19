@@ -2,6 +2,14 @@ import { AttachNoteTool } from '@tools/notes/attach-note';
 import { ProductboardAPIClient } from '@api/index';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('AttachNoteTool', () => {
   let tool: AttachNoteTool;
   let mockApiClient: jest.Mocked<ProductboardAPIClient>;
@@ -66,7 +74,7 @@ describe('AttachNoteTool', () => {
         links: {},
       });
 
-      const result = await tool.execute(validParams);
+      const result = parseResult(await tool.execute(validParams));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'POST',
@@ -103,7 +111,7 @@ describe('AttachNoteTool', () => {
         links: {},
       });
 
-      const result = await tool.execute(singleFeatureParams);
+      const result = parseResult(await tool.execute(singleFeatureParams));
 
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'POST',
@@ -111,7 +119,7 @@ describe('AttachNoteTool', () => {
         data: { feature_ids: ['feat-single'] },
       });
 
-      expect((result as any).data.data.total_attachments).toBe(1);
+      expect(result.data.data.total_attachments).toBe(1);
     });
 
     it('should validate required parameters', async () => {
@@ -163,11 +171,11 @@ describe('AttachNoteTool', () => {
         links: {},
       });
 
-      const result = await tool.execute(validParams);
+      const result = parseResult(await tool.execute(validParams));
 
-      expect((result as any).success).toBe(true);
-      expect((result as any).data.data).toHaveProperty('already_attached');
-      expect((result as any).data.data).toHaveProperty('newly_attached');
+      expect(result.success).toBe(true);
+      expect(result.data.data).toHaveProperty('already_attached');
+      expect(result.data.data).toHaveProperty('newly_attached');
     });
 
     it('should handle attachment limit error', async () => {

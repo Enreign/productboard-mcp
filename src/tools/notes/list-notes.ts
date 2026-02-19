@@ -1,5 +1,6 @@
 import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '@api/index.js';
+import { extractResponseData } from '@api/client.js';
 import { Logger } from '@utils/logger.js';
 import { Permission, AccessLevel } from '@auth/permissions.js';
 
@@ -86,13 +87,7 @@ export class ListNotesTool extends BaseTool<ListNotesParams> {
       params: queryParams,
     });
 
-    // Extract notes data
-    let notes: any[] = [];
-    if (response && (response as any).data) {
-      notes = (response as any).data;
-    } else if (Array.isArray(response)) {
-      notes = response;
-    }
+    const notes = extractResponseData(response);
     
     // Format response for MCP protocol
     const formattedNotes = notes.map((note: any) => ({

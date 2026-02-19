@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface ExportToJiraParams {
   feature_ids: string[];
@@ -95,36 +94,27 @@ export class ExportToJiraTool extends BaseTool<ExportToJiraParams> {
     );
   }
 
-  protected async executeInternal(params: ExportToJiraParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Exporting features to JIRA', { 
-        count: params.feature_ids.length,
-        project: params.jira_project_key 
-      });
+  protected async executeInternal(params: ExportToJiraParams): Promise<unknown> {
+    this.logger.info('Exporting features to JIRA', {
+      count: params.feature_ids.length,
+      project: params.jira_project_key
+    });
 
-      const response = await this.apiClient.post('/integrations/jira/export', {
-        feature_ids: params.feature_ids,
-        jira_project_key: params.jira_project_key,
-        issue_type: params.issue_type || 'Story',
-        options: params.create_options || {
-          include_description: true,
-          include_notes_as_comments: true,
-          link_back_to_productboard: true,
-        },
-        field_mapping: params.field_mapping,
-      });
+    const response = await this.apiClient.post('/integrations/jira/export', {
+      feature_ids: params.feature_ids,
+      jira_project_key: params.jira_project_key,
+      issue_type: params.issue_type || 'Story',
+      options: params.create_options || {
+        include_description: true,
+        include_notes_as_comments: true,
+        link_back_to_productboard: true,
+      },
+      field_mapping: params.field_mapping,
+    });
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to export to JIRA', error);
-      
-      return {
-        success: false,
-        error: `Failed to export to JIRA: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

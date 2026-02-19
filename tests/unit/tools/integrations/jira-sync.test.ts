@@ -4,6 +4,14 @@ import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 // Error types are checked by message rather than type
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('JiraSyncTool', () => {
   let tool: JiraSyncTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -186,7 +194,7 @@ describe('JiraSyncTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/integrations/jira/sync', {
         action: 'sync',
@@ -238,7 +246,7 @@ describe('JiraSyncTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/integrations/jira/sync', {
         action: 'import',
@@ -289,7 +297,7 @@ describe('JiraSyncTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(mockClient.post).toHaveBeenCalledWith('/integrations/jira/sync', {
         action: 'export',
@@ -315,16 +323,7 @@ describe('JiraSyncTool', () => {
       
       mockClient.post.mockRejectedValueOnce(new Error('JIRA API connection failed'));
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to sync with JIRA: JIRA API connection failed',
-      });
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to sync with JIRA',
-        expect.any(Error)
-      );
+      await expect(tool.execute(validInput)).rejects.toThrow('JIRA API connection failed');
     });
 
     it('should handle authentication errors', async () => {
@@ -345,12 +344,7 @@ describe('JiraSyncTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to sync with JIRA: JIRA authentication failed',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('JIRA authentication failed');
     });
 
     it('should handle JIRA project not found errors', async () => {
@@ -371,12 +365,7 @@ describe('JiraSyncTool', () => {
       };
       mockClient.post.mockRejectedValueOnce(error);
 
-      const result = await tool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to sync with JIRA: JIRA project not found',
-      });
+      await expect(tool.execute(validInput)).rejects.toThrow('JIRA project not found');
     });
 
     it('should handle sync conflicts and errors', async () => {
@@ -407,7 +396,7 @@ describe('JiraSyncTool', () => {
       
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(validInput);
+      const result = parseResult(await tool.execute(validInput));
 
       expect(result).toEqual({
         success: true,
@@ -422,12 +411,7 @@ describe('JiraSyncTool', () => {
       const validInput = {
         action: 'sync' as const,
       };
-      const result = await uninitializedTool.execute(validInput);
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to sync with JIRA:'),
-      });
+      await expect(uninitializedTool.execute(validInput)).rejects.toThrow();
     });
 
     it('should set default sync_options if not provided', async () => {
@@ -544,9 +528,9 @@ describe('JiraSyncTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         action: 'sync',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
@@ -579,10 +563,10 @@ describe('JiraSyncTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         action: 'import',
         jira_project_key: 'PROJ',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
@@ -609,10 +593,10 @@ describe('JiraSyncTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         action: 'export',
         jira_project_key: 'EXPORT',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
@@ -641,10 +625,10 @@ describe('JiraSyncTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         action: 'sync',
         feature_ids: ['nonexistent_feature'],
-      });
+      }));
 
       expect(result).toEqual({
         success: true,

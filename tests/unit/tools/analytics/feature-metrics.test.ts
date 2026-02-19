@@ -3,6 +3,14 @@ import { FeatureMetricsTool } from '@tools/analytics/feature-metrics';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('FeatureMetricsTool', () => {
   let tool: FeatureMetricsTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -151,7 +159,7 @@ describe('FeatureMetricsTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -195,7 +203,7 @@ describe('FeatureMetricsTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -218,13 +226,7 @@ describe('FeatureMetricsTool', () => {
       const error = new Error('API Error');
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to get feature metrics: API Error',
-      });
-      expect(mockLogger.error).toHaveBeenCalledWith('Failed to get feature metrics', error);
+      await expect(tool.execute({})).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -239,12 +241,7 @@ describe('FeatureMetricsTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to get feature metrics: Authentication failed',
-      });
+      await expect(tool.execute({})).rejects.toThrow('Authentication failed');
     });
 
     it('should handle insufficient permissions error', async () => {
@@ -259,22 +256,13 @@ describe('FeatureMetricsTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to get feature metrics: Insufficient permissions',
-      });
+      await expect(tool.execute({})).rejects.toThrow('Insufficient permissions');
     });
 
     it('should throw error if client not initialized', async () => {
       const uninitializedTool = new FeatureMetricsTool(null as any, mockLogger);
-      const result = await uninitializedTool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to get feature metrics:'),
-      });
+
+      await expect(uninitializedTool.execute({})).rejects.toThrow();
     });
 
     it('should handle empty arrays gracefully', async () => {
@@ -290,7 +278,7 @@ describe('FeatureMetricsTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -332,18 +320,18 @@ describe('FeatureMetricsTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         metrics: ['views', 'votes', 'comments', 'status_changes'],
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('summary');
-      expect((result as any).data).toHaveProperty('metrics');
-      expect((result as any).data.summary).toHaveProperty('total_features', 10);
-      expect((result as any).data.metrics[0]).toHaveProperty('feature_id', 'feat_123');
+      expect(result.data).toHaveProperty('summary');
+      expect(result.data).toHaveProperty('metrics');
+      expect(result.data.summary).toHaveProperty('total_features', 10);
+      expect(result.data.metrics[0]).toHaveProperty('feature_id', 'feat_123');
     });
 
     it('should handle minimal response structure', async () => {
@@ -356,7 +344,7 @@ describe('FeatureMetricsTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(result).toEqual({
         success: true,

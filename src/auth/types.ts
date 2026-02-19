@@ -14,6 +14,7 @@ export interface Credentials {
   clientId?: string;
   clientSecret?: string;
   refreshToken?: string;
+  redirectUri?: string;
 }
 
 export interface TokenResponse {

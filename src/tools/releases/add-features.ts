@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface AddFeaturesToReleaseParams {
   release_id: string;
@@ -40,28 +39,19 @@ export class AddFeaturesToReleaseTool extends BaseTool<AddFeaturesToReleaseParam
     );
   }
 
-  protected async executeInternal(params: AddFeaturesToReleaseParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Adding features to release', { 
-        release_id: params.release_id,
-        feature_count: params.feature_ids.length 
-      });
+  protected async executeInternal(params: AddFeaturesToReleaseParams): Promise<unknown> {
+    this.logger.info('Adding features to release', {
+      release_id: params.release_id,
+      feature_count: params.feature_ids.length
+    });
 
-      const response = await this.apiClient.post(`/releases/${params.release_id}/features`, {
-        feature_ids: params.feature_ids,
-      });
+    const response = await this.apiClient.post(`/releases/${params.release_id}/features`, {
+      feature_ids: params.feature_ids,
+    });
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to add features to release', error);
-      
-      return {
-        success: false,
-        error: `Failed to add features to release: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

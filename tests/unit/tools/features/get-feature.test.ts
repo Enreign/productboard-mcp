@@ -2,6 +2,14 @@ import { GetFeatureTool } from '@tools/features/get-feature';
 import { ProductboardAPIClient } from '@api/index';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('GetFeatureTool', () => {
   let tool: GetFeatureTool;
   let mockApiClient: ProductboardAPIClient;
@@ -75,7 +83,7 @@ describe('GetFeatureTool', () => {
     it('should fetch feature details successfully', async () => {
       (mockApiClient.get as jest.Mock).mockResolvedValue(mockFeature);
 
-      const result = await tool.execute(validParams);
+      const result = parseResult(await tool.execute(validParams));
 
       expect(mockApiClient.get).toHaveBeenCalledWith(
         '/features/feature-123',
@@ -111,7 +119,7 @@ describe('GetFeatureTool', () => {
 
       (mockApiClient.get as jest.Mock).mockResolvedValue(mockFeatureWithIncludes);
 
-      const result = await tool.execute(paramsWithInclude);
+      const result = parseResult(await tool.execute(paramsWithInclude));
 
       expect(mockApiClient.get).toHaveBeenCalledWith(
         '/features/feature-123',

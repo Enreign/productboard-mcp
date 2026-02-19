@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface FeedbackTrendsParams {
   date_from?: string;
@@ -67,36 +66,27 @@ export class FeedbackTrendsTool extends BaseTool<FeedbackTrendsParams> {
     );
   }
 
-  protected async executeInternal(params: FeedbackTrendsParams = {}): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Analyzing feedback trends');
+  protected async executeInternal(params: FeedbackTrendsParams = {}): Promise<unknown> {
+    this.logger.info('Analyzing feedback trends');
 
-      const queryParams: Record<string, any> = {};
-      if (params.date_from) queryParams.date_from = params.date_from;
-      if (params.date_to) queryParams.date_to = params.date_to;
-      if (params.product_id) queryParams.product_id = params.product_id;
-      if (params.feature_id) queryParams.feature_id = params.feature_id;
-      if (params.source) queryParams.source = params.source;
-      if (params.tags?.length) queryParams.tags = params.tags.join(',');
-      if (params.groupBy) queryParams.group_by = params.groupBy;
+    const queryParams: Record<string, any> = {};
+    if (params.date_from) queryParams.date_from = params.date_from;
+    if (params.date_to) queryParams.date_to = params.date_to;
+    if (params.product_id) queryParams.product_id = params.product_id;
+    if (params.feature_id) queryParams.feature_id = params.feature_id;
+    if (params.source) queryParams.source = params.source;
+    if (params.tags?.length) queryParams.tags = params.tags.join(',');
+    if (params.groupBy) queryParams.group_by = params.groupBy;
 
-      const response = await this.apiClient.makeRequest({
-        method: 'GET',
-        endpoint: '/analytics/feedback-trends',
-        params: queryParams,
-      });
+    const response = await this.apiClient.makeRequest({
+      method: 'GET',
+      endpoint: '/analytics/feedback-trends',
+      params: queryParams,
+    });
 
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to analyze feedback trends', error);
-      
-      return {
-        success: false,
-        error: `Failed to analyze feedback trends: ${(error as Error).message}`,
-      };
-    }
+    return {
+      success: true,
+      data: response,
+    };
   }
 }

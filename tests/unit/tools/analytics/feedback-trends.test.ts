@@ -3,6 +3,14 @@ import { FeedbackTrendsTool } from '@tools/analytics/feedback-trends';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('FeedbackTrendsTool', () => {
   let tool: FeedbackTrendsTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -171,7 +179,7 @@ describe('FeedbackTrendsTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -237,7 +245,7 @@ describe('FeedbackTrendsTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -262,13 +270,7 @@ describe('FeedbackTrendsTool', () => {
       const error = new Error('API Error');
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to analyze feedback trends: API Error',
-      });
-      expect(mockLogger.error).toHaveBeenCalledWith('Failed to analyze feedback trends', error);
+      await expect(tool.execute({})).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -283,12 +285,7 @@ describe('FeedbackTrendsTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to analyze feedback trends: Authentication failed',
-      });
+      await expect(tool.execute({})).rejects.toThrow('Authentication failed');
     });
 
     it('should handle insufficient permissions error', async () => {
@@ -303,22 +300,13 @@ describe('FeedbackTrendsTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to analyze feedback trends: Insufficient permissions',
-      });
+      await expect(tool.execute({})).rejects.toThrow('Insufficient permissions');
     });
 
     it('should throw error if client not initialized', async () => {
       const uninitializedTool = new FeedbackTrendsTool(null as any, mockLogger);
-      const result = await uninitializedTool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to analyze feedback trends:'),
-      });
+
+      await expect(uninitializedTool.execute({})).rejects.toThrow();
     });
 
     it('should handle empty arrays gracefully', async () => {
@@ -333,7 +321,7 @@ describe('FeedbackTrendsTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -408,19 +396,19 @@ describe('FeedbackTrendsTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         groupBy: 'month',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('summary');
-      expect((result as any).data).toHaveProperty('trends');
-      expect((result as any).data.summary).toHaveProperty('total_feedback', 200);
-      expect((result as any).data.trends[0]).toHaveProperty('period', '2024-01');
-      expect((result as any).data.trends[0]).toHaveProperty('count', 50);
+      expect(result.data).toHaveProperty('summary');
+      expect(result.data).toHaveProperty('trends');
+      expect(result.data.summary).toHaveProperty('total_feedback', 200);
+      expect(result.data.trends[0]).toHaveProperty('period', '2024-01');
+      expect(result.data.trends[0]).toHaveProperty('count', 50);
     });
 
     it('should handle minimal response structure', async () => {
@@ -433,7 +421,7 @@ describe('FeedbackTrendsTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(result).toEqual({
         success: true,
@@ -467,16 +455,16 @@ describe('FeedbackTrendsTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({
+      const result = parseResult(await tool.execute({
         groupBy: 'week',
-      });
+      }));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data.trends[0]).toHaveProperty('top_keywords');
-      expect((result as any).data.trends[0]).toHaveProperty('sentiment_distribution');
+      expect(result.data.trends[0]).toHaveProperty('top_keywords');
+      expect(result.data.trends[0]).toHaveProperty('sentiment_distribution');
     });
   });
 });

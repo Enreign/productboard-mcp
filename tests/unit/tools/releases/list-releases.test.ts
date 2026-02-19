@@ -3,6 +3,14 @@ import { ListReleasesTool } from '@tools/releases/list-releases';
 import { ProductboardAPIClient } from '@api/client';
 import { Logger } from '@utils/logger';
 
+/** Parse the MCP content wrapper to get the underlying result */
+function parseResult(result: any): any {
+  if (result?.content?.[0]?.text) {
+    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+  }
+  return result;
+}
+
 describe('ListReleasesTool', () => {
   let tool: ListReleasesTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
@@ -142,7 +150,7 @@ describe('ListReleasesTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -182,7 +190,7 @@ describe('ListReleasesTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -216,7 +224,7 @@ describe('ListReleasesTool', () => {
       
       mockClient.makeRequest.mockResolvedValueOnce(expectedResponse);
 
-      const result = await tool.execute(input);
+      const result = parseResult(await tool.execute(input));
 
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
@@ -235,12 +243,7 @@ describe('ListReleasesTool', () => {
     it('should handle API errors gracefully', async () => {
       mockClient.makeRequest.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to list releases: API Error',
-      });
+      await expect(tool.execute({})).rejects.toThrow('API Error');
     });
 
     it('should handle authentication errors', async () => {
@@ -256,22 +259,13 @@ describe('ListReleasesTool', () => {
       };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      const result = await tool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to list releases: Authentication failed',
-      });
+      await expect(tool.execute({})).rejects.toThrow('Authentication failed');
     });
 
     it('should throw error if client not initialized', async () => {
       const uninitializedTool = new ListReleasesTool(null as any, mockLogger);
-      const result = await uninitializedTool.execute({});
-      
-      expect(result).toEqual({
-        success: false,
-        error: expect.stringContaining('Failed to list releases:'),
-      });
+
+      await expect(uninitializedTool.execute({})).rejects.toThrow();
     });
   });
 
@@ -293,15 +287,15 @@ describe('ListReleasesTool', () => {
 
       mockClient.makeRequest.mockResolvedValueOnce(apiResponse);
 
-      const result = await tool.execute({});
+      const result = parseResult(await tool.execute({}));
 
       expect(result).toEqual({
         success: true,
         data: apiResponse,
       });
-      expect((result as any).data).toHaveProperty('releases');
-      expect((result as any).data).toHaveProperty('total', 1);
-      expect((result as any).data.releases[0]).toHaveProperty('id', 'rel_123');
+      expect(result.data).toHaveProperty('releases');
+      expect(result.data).toHaveProperty('total', 1);
+      expect(result.data.releases[0]).toHaveProperty('id', 'rel_123');
     });
   });
 });

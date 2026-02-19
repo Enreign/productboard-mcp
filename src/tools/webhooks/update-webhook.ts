@@ -1,8 +1,7 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient } from '../../api/client.js';
-import { Logger } from '../../utils/logger.js';
-import { ToolExecutionResult } from '../../core/types.js';
-import { Permission, AccessLevel } from '../../auth/permissions.js';
+import { ProductboardAPIClient } from '@api/client.js';
+import { Logger } from '@utils/logger.js';
+import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface UpdateWebhookParams {
   id: string;
@@ -60,32 +59,20 @@ export class UpdateWebhookTool extends BaseTool<UpdateWebhookParams> {
     );
   }
 
-  protected async executeInternal(params: UpdateWebhookParams): Promise<ToolExecutionResult> {
-    try {
-      this.logger.info('Updating webhook', { id: params.id });
+  protected async executeInternal(params: UpdateWebhookParams): Promise<unknown> {
+    this.logger.info('Updating webhook', { id: params.id });
 
-      const { id, ...updateData } = params;
-      
-      if (Object.keys(updateData).length === 0) {
-        return {
-          success: false,
-          error: 'No update fields provided',
-        };
-      }
+    const { id, ...updateData } = params;
 
-      const response = await this.apiClient.put(`/webhooks/${id}`, updateData);
-
-      return {
-        success: true,
-        data: response,
-      };
-    } catch (error) {
-      this.logger.error('Failed to update webhook', error);
-      
-      return {
-        success: false,
-        error: `Failed to update webhook: ${(error as Error).message}`,
-      };
+    if (Object.keys(updateData).length === 0) {
+      throw new Error('No update fields provided');
     }
+
+    const response = await this.apiClient.put(`/webhooks/${id}`, updateData);
+
+    return {
+      success: true,
+      data: response,
+    };
   }
 }
