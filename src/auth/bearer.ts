@@ -14,7 +14,7 @@ export class BearerTokenAuth {
 
   async validateToken(token: string): Promise<boolean> {
     // Development bypass
-    if (process.env.NODE_ENV === "development" || token === "test_token" || process.env.SKIP_TOKEN_VALIDATION === "true") {
+    if (process.env.NODE_ENV === "development" || process.env.SKIP_TOKEN_VALIDATION === "true") {
       this.logger.debug("Skipping token validation in development mode");
       return true;
     }

@@ -47,7 +47,7 @@ export class AuthenticationManager implements AuthManagerInterface {
         clientSecret: config.credentials.clientSecret,
         authorizationEndpoint: config.authorizationEndpoint || `${oauthBase}/oauth/authorize`,
         tokenEndpoint: config.tokenEndpoint || `${oauthBase}/oauth/token`,
-        redirectUri: config.credentials.redirectUri || 'http://localhost:3000/callback',
+        redirectUri: config.credentials.redirectUri || 'https://localhost:3000/callback',
       };
 
       this.oauth2Auth = new OAuth2Auth(oauth2Config);

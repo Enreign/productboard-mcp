@@ -147,7 +147,7 @@ describe('AuthenticationManager', () => {
         clientSecret: 'test-client-secret',
         authorizationEndpoint: 'https://api.productboard.com/oauth/authorize',
         tokenEndpoint: 'https://api.productboard.com/oauth/token',
-        redirectUri: 'http://localhost:3000/callback',
+        redirectUri: 'https://localhost:3000/callback',
       });
     });
 

@@ -50,8 +50,8 @@ export class Logger {
         {
           err: {
             message: error.message,
-            stack: error.stack,
             name: error.name,
+            ...(process.env.NODE_ENV !== 'production' && { stack: error.stack }),
           },
         },
         message,
@@ -67,8 +67,8 @@ export class Logger {
         {
           err: {
             message: error.message,
-            stack: error.stack,
             name: error.name,
+            ...(process.env.NODE_ENV !== 'production' && { stack: error.stack }),
           },
         },
         message,
