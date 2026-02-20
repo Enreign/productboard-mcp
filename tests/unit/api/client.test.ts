@@ -18,7 +18,7 @@ describe('ProductboardAPIClient', () => {
   let mockLogger: jest.Mocked<Logger>;
   let mockRateLimiter: jest.Mocked<RateLimiter>;
 
-  const BASE_URL = 'https://api.productboard.com';
+  const BASE_URL = 'https://api.productboard.com/v2';
 
   beforeEach(() => {
     mockAuthManager = {

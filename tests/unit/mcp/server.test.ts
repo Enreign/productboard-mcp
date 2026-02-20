@@ -62,7 +62,7 @@ describe('ProductboardMCPServer', () => {
           token: 'test-token',
         },
         api: {
-          baseUrl: 'https://api.productboard.com',
+          baseUrl: 'https://api.productboard.com/v2',
           timeout: 5000,
         },
         rateLimit: {
@@ -143,7 +143,7 @@ describe('ProductboardMCPServer', () => {
           token: 'test-token',
         },
         api: {
-          baseUrl: 'https://api.productboard.com',
+          baseUrl: 'https://api.productboard.com/v2',
           timeout: 5000,
         },
         rateLimit: {

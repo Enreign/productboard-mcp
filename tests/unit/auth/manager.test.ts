@@ -57,7 +57,7 @@ describe('AuthenticationManager', () => {
     });
 
     it('should create BearerTokenAuth instance', () => {
-      expect(BearerTokenAuth).toHaveBeenCalledWith('https://api.productboard.com');
+      expect(BearerTokenAuth).toHaveBeenCalledWith('https://api.productboard.com/v2');
     });
 
     it('should return auth headers from bearer auth', () => {

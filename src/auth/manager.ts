@@ -24,7 +24,7 @@ export class AuthenticationManager implements AuthManagerInterface {
     this.authType = config.type;
     this.store = new SecureCredentialStore();
     this.logger = logger;
-    this.baseUrl = config.baseUrl || 'https://api.productboard.com';
+    this.baseUrl = config.baseUrl || 'https://api.productboard.com/v2';
 
     this.initializeAuthHandlers(config);
   }
@@ -40,11 +40,13 @@ export class AuthenticationManager implements AuthManagerInterface {
         );
       }
 
+      // OAuth2 endpoints are not versioned — strip any /v2 suffix from the base URL
+      const oauthBase = this.baseUrl.replace(/\/v\d+(\.\d+)*$/, '');
       const oauth2Config: OAuth2Config = {
         clientId: config.credentials.clientId,
         clientSecret: config.credentials.clientSecret,
-        authorizationEndpoint: config.authorizationEndpoint || `${this.baseUrl}/oauth/authorize`,
-        tokenEndpoint: config.tokenEndpoint || `${this.baseUrl}/oauth/token`,
+        authorizationEndpoint: config.authorizationEndpoint || `${oauthBase}/oauth/authorize`,
+        tokenEndpoint: config.tokenEndpoint || `${oauthBase}/oauth/token`,
         redirectUri: config.credentials.redirectUri || 'http://localhost:3000/callback',
       };
 
