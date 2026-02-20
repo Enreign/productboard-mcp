@@ -1,10 +1,12 @@
 # Productboard MCP Server
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server for the [Productboard API v2](https://developer.productboard.com). Enables AI assistants like Claude to read and manage your Productboard workspace — features, products, notes, objectives, key results, and releases.
+A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server for the [Productboard API v2](https://developer.productboard.com/v2.0.0/reference/introduction). Enables AI assistants like Claude to read and manage your Productboard workspace — features, products, notes, objectives, key results, and releases.
+
+> **Note:** Productboard API v2 is currently in Beta.
 
 ## Tools
 
-**21 tools** across 5 resource groups, all backed by the Productboard v2 API (`https://api.productboard.com/v2`).
+**21 tools** across 5 resource groups, all backed by the Productboard v2 unified `/entities` endpoint (`https://api.productboard.com/v2`).
 
 ### Features (5)
 | Tool | Description |
@@ -52,8 +54,8 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server for the
 ### Prerequisites
 
 - Node.js 18+
-- Productboard API token ([get one here](https://your-subdomain.productboard.com/settings/api-keys))
-- MCP-compatible client (e.g. [Claude Desktop](https://claude.ai/download))
+- Productboard API token (find it under **Settings → API Keys** in your Productboard workspace)
+- MCP-compatible client (Claude Desktop or Claude Code)
 
 ### Installation
 
@@ -64,16 +66,27 @@ npm install
 npm run build
 ```
 
-### Configuration
-
-```bash
-cp .env.example .env
-# Set PRODUCTBOARD_API_TOKEN in .env
-```
-
-### Claude Desktop Integration
+### Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "productboard": {
+      "command": "node",
+      "args": ["/path/to/productboard-mcp/dist/index.js"],
+      "env": {
+        "PRODUCTBOARD_API_TOKEN": "your-token-here"
+      }
+    }
+  }
+}
+```
+
+### Claude Code
+
+Add to `.mcp.json` in your project root (or run `claude mcp add`):
 
 ```json
 {
@@ -114,7 +127,7 @@ OAuth2 variables (only needed if `PRODUCTBOARD_AUTH_TYPE=oauth2`):
 ```bash
 npm run dev          # Start with hot reload
 npm run build        # Compile TypeScript
-npm test             # Run tests (~280 tests)
+npm test             # Run tests (280 tests)
 npm run test:watch   # Watch mode
 npm run lint         # ESLint
 npm run format       # Prettier
