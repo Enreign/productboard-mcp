@@ -54,7 +54,7 @@ export class DeleteFeatureTool extends BaseTool<DeleteFeatureParams> {
     } else {
       // Archive by updating status
       const feature = await this.apiClient.patch(`/entities/${id}`, {
-        fields: { status: 'archived' },
+        data: { fields: { archived: true } },
       });
       return {
         success: true,

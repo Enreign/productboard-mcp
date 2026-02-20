@@ -92,7 +92,11 @@ export class UpdateFeatureTool extends BaseTool<UpdateFeatureParams> {
   protected async executeInternal(params: UpdateFeatureParams): Promise<unknown> {
     const { id, ...updateData } = params;
 
-    const response = await this.apiClient.patch(`/entities/${id}`, { fields: updateData });
+    const { owner_email, ...rest } = updateData as Record<string, unknown>;
+    const fields: Record<string, unknown> = { ...rest };
+    if (owner_email) fields.owner = { email: owner_email };
+
+    const response = await this.apiClient.patch(`/entities/${id}`, { data: { fields } });
 
     return {
       success: true,

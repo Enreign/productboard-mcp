@@ -401,7 +401,7 @@ describe('ProductboardMCPServer', () => {
 
       expect(health).toMatchObject({
         status: 'healthy',
-        version: '1.0.0',
+        version: '2.0.0',
         uptime: expect.any(Number),
         checks: {
           api: true,
@@ -483,7 +483,7 @@ describe('ProductboardMCPServer', () => {
       expect(Server).toHaveBeenCalledWith(
         {
           name: 'productboard-mcp',
-          version: '1.0.0',
+          version: '2.0.0',
         },
         {
           capabilities: {

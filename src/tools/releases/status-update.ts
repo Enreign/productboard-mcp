@@ -64,10 +64,12 @@ export class ReleaseStatusUpdateTool extends BaseTool<ReleaseStatusUpdateParams>
     }
 
     const response = await this.apiClient.patch(`/entities/${params.id}`, {
-      fields: {
-        status: params.status,
-        release_notes: params.release_notes,
-        actual_date: params.actual_date,
+      data: {
+        fields: {
+          status: params.status,
+          release_notes: params.release_notes,
+          actual_date: params.actual_date,
+        },
       },
     });
 

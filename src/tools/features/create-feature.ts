@@ -64,15 +64,22 @@ export class CreateFeatureTool extends BaseTool<FeaturePayload> {
   }
 
   protected async executeInternal(params: FeaturePayload): Promise<unknown> {
-    const requestData = {
-      type: 'feature',
-      fields: {
-        ...params,
-        status: params.status || 'new',
-      },
-    };
+    const { owner_email, product_id, component_id, ...rest } = params;
 
-    const response = await this.apiClient.post('/entities', requestData);
+    const fields: Record<string, unknown> = {
+      ...rest,
+      status: params.status || 'new',
+    };
+    if (owner_email) fields.owner = { email: owner_email };
+
+    const relationships: Array<{ type: string; target: { id: string } }> = [];
+    if (component_id) relationships.push({ type: 'parent', target: { id: component_id } });
+    else if (product_id) relationships.push({ type: 'parent', target: { id: product_id } });
+
+    const requestData: Record<string, unknown> = { type: 'feature', fields };
+    if (relationships.length > 0) requestData.relationships = relationships;
+
+    const response = await this.apiClient.post('/entities', { data: requestData });
 
     return {
       success: true,

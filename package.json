@@ -1,6 +1,6 @@
 {
   "name": "productboard-mcp",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "MCP server for Productboard API integration",
   "main": "dist/index.js",
   "type": "module",
@@ -37,13 +37,13 @@
   },
   "homepage": "https://github.com/Enreign/productboard-mcp#readme",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.5.0",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "axios": "^1.6.0",
+    "dotenv": "^16.5.0",
     "jsonschema": "^1.4.1",
     "lru-cache": "^10.0.1",
     "pino": "^8.16.0",
-    "pino-pretty": "^10.2.3",
-    "dotenv": "^16.5.0"
+    "pino-pretty": "^10.2.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",

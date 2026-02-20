@@ -78,7 +78,7 @@ export class UpdateObjectiveTool extends BaseTool<UpdateObjectiveParams> {
       };
     }
 
-    const response = await this.apiClient.patch(`/entities/${id}`, { fields: updateData });
+    const response = await this.apiClient.patch(`/entities/${id}`, { data: { fields: updateData } });
 
     return {
       success: true,

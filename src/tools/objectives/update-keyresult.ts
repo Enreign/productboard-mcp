@@ -70,7 +70,7 @@ export class UpdateKeyResultTool extends BaseTool<UpdateKeyResultParams> {
       };
     }
 
-    const response = await this.apiClient.patch(`/entities/${id}`, { fields: updateData });
+    const response = await this.apiClient.patch(`/entities/${id}`, { data: { fields: updateData } });
 
     return {
       success: true,

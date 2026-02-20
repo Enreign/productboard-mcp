@@ -157,7 +157,20 @@ describe('CreateFeatureTool', () => {
 
       const result = parseResult(await tool.execute(validInput));
 
-      expect(mockClient.post).toHaveBeenCalledWith('/entities', { type: 'feature', fields: { ...validInput, status: validInput.status || 'new' } });
+      expect(mockClient.post).toHaveBeenCalledWith('/entities', {
+        data: {
+          type: 'feature',
+          fields: {
+            name: validInput.name,
+            description: validInput.description,
+            status: 'new',
+            tags: validInput.tags,
+            priority: validInput.priority,
+            owner: { email: validInput.owner_email },
+          },
+          relationships: [{ type: 'parent', target: { id: validInput.component_id } }],
+        },
+      });
       expect(result).toEqual({
         success: true,
         data: expectedResponse,
@@ -252,10 +265,13 @@ describe('CreateFeatureTool', () => {
       await tool.execute(inputWithoutStatus);
 
       expect(mockClient.post).toHaveBeenCalledWith('/entities', {
-        type: 'feature',
-        fields: {
-          ...inputWithoutStatus,
-          status: 'new',
+        data: {
+          type: 'feature',
+          fields: {
+            name: inputWithoutStatus.name,
+            description: inputWithoutStatus.description,
+            status: 'new',
+          },
         },
       });
     });

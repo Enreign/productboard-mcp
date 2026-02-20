@@ -51,7 +51,7 @@ export class CreateReleaseTool extends BaseTool<CreateReleaseParams> {
   protected async executeInternal(params: CreateReleaseParams): Promise<unknown> {
     this.logger.info('Creating release', { name: params.name });
 
-    const response = await this.apiClient.post('/entities', { type: 'release', fields: params });
+    const response = await this.apiClient.post('/entities', { data: { type: 'release', fields: params } });
 
     return {
       success: true,
