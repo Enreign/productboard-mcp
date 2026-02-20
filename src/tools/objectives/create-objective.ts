@@ -58,7 +58,9 @@ export class CreateObjectiveTool extends BaseTool<CreateObjectiveParams> {
   protected async executeInternal(params: CreateObjectiveParams): Promise<unknown> {
     this.logger.info('Creating objective', { name: params.name });
 
-    const response = await this.apiClient.post('/entities', { data: { type: 'objective', fields: params } });
+    const fields = { ...params } as Record<string, unknown>;
+    if (fields.description) fields.description = (fields.description as string).startsWith('<') ? fields.description : `<p>${fields.description}</p>`;
+    const response = await this.apiClient.post('/entities', { data: { type: 'objective', fields } });
 
     return {
       success: true,

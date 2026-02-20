@@ -50,7 +50,9 @@ export class CreateProductTool extends BaseTool<CreateProductParams> {
   protected async executeInternal(params: CreateProductParams): Promise<unknown> {
     this.logger.info('Creating product', { name: params.name });
 
-    const response = await this.apiClient.post('/entities', { data: { type: 'product', fields: params } });
+    const fields = { ...params } as Record<string, unknown>;
+    if (fields.description) fields.description = (fields.description as string).startsWith('<') ? fields.description : `<p>${fields.description}</p>`;
+    const response = await this.apiClient.post('/entities', { data: { type: 'product', fields } });
 
     return {
       success: true,

@@ -69,7 +69,15 @@ export class CreateNoteTool extends BaseTool<CreateNoteParams> {
   protected async executeInternal(params: CreateNoteParams): Promise<unknown> {
     this.logger.info('Creating note');
 
-    const response = await this.apiClient.post('/notes', params);
+    const toHtml = (text: string) =>
+      text.startsWith('<') ? text : `<p>${text}</p>`;
+
+    const fields: Record<string, unknown> = {
+      name: params.title || params.content.slice(0, 100),
+      content: toHtml(params.content),
+    };
+
+    const response = await this.apiClient.post('/notes', { data: { type: 'simple', fields } });
 
     return {
       success: true,

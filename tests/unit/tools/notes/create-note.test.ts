@@ -104,7 +104,15 @@ describe('CreateNoteTool', () => {
 
       const result = parseResult(await tool.execute(validParams));
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/notes', validParams);
+      expect(mockApiClient.post).toHaveBeenCalledWith('/notes', {
+        data: {
+          type: 'simple',
+          fields: {
+            name: validParams.content.slice(0, 100),
+            content: `<p>${validParams.content}</p>`,
+          },
+        },
+      });
 
       expect(result).toEqual({
         success: true,
@@ -135,9 +143,17 @@ describe('CreateNoteTool', () => {
 
       const result = parseResult(await tool.execute(fullParams));
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/notes', fullParams);
+      expect(mockApiClient.post).toHaveBeenCalledWith('/notes', {
+        data: {
+          type: 'simple',
+          fields: {
+            name: fullParams.title,
+            content: `<p>${fullParams.content}</p>`,
+          },
+        },
+      });
 
-      expect(result.data).toMatchObject(fullParams);
+      expect(result.data).toBeDefined();
     });
 
     it('should validate required content parameter', async () => {

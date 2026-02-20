@@ -162,7 +162,7 @@ describe('CreateFeatureTool', () => {
           type: 'feature',
           fields: {
             name: validInput.name,
-            description: validInput.description,
+            description: `<p>${validInput.description}</p>`,
             status: 'new',
             tags: validInput.tags,
             priority: validInput.priority,
@@ -269,7 +269,7 @@ describe('CreateFeatureTool', () => {
           type: 'feature',
           fields: {
             name: inputWithoutStatus.name,
-            description: inputWithoutStatus.description,
+            description: `<p>${inputWithoutStatus.description}</p>`,
             status: 'new',
           },
         },

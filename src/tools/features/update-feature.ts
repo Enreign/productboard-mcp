@@ -94,6 +94,7 @@ export class UpdateFeatureTool extends BaseTool<UpdateFeatureParams> {
 
     const { owner_email, ...rest } = updateData as Record<string, unknown>;
     const fields: Record<string, unknown> = { ...rest };
+    if (fields.description) fields.description = (fields.description as string).startsWith('<') ? fields.description : `<p>${fields.description}</p>`;
     if (owner_email) fields.owner = { email: owner_email };
 
     const response = await this.apiClient.patch(`/entities/${id}`, { data: { fields } });

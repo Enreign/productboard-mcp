@@ -66,10 +66,13 @@ export class CreateFeatureTool extends BaseTool<FeaturePayload> {
   protected async executeInternal(params: FeaturePayload): Promise<unknown> {
     const { owner_email, product_id, component_id, ...rest } = params;
 
+    const toHtml = (text: string) => text.startsWith('<') ? text : `<p>${text}</p>`;
+
     const fields: Record<string, unknown> = {
       ...rest,
       status: params.status || 'new',
     };
+    if (fields.description) fields.description = toHtml(fields.description as string);
     if (owner_email) fields.owner = { email: owner_email };
 
     const relationships: Array<{ type: string; target: { id: string } }> = [];
