@@ -2,7 +2,15 @@ import { Tool } from '../core/types.js';
 import { Schema, ValidationResult } from '../middleware/types.js';
 import { Validator } from '../middleware/validator.js';
 import { ProductboardAPIClient } from '../api/client.js';
-import { ValidationError as MCPValidationError, ToolExecutionError } from '../utils/errors.js';
+import {
+  APIAuthenticationError,
+  APIAuthorizationError,
+  APINotFoundError,
+  APIRateLimitError,
+  APIServerError,
+  APIValidationError,
+} from '../api/errors.js';
+import { ValidationError as MCPValidationError } from '../utils/errors.js';
 import { Logger } from '../utils/logger.js';
 import { Permission, AccessLevel, UserPermissions, ToolPermissionMetadata } from '../auth/permissions.js';
 
@@ -52,14 +60,11 @@ export abstract class BaseTool<TParams = unknown> implements Tool {
       const result = await this.executeInternal(params);
       return this.toMCPContent(result);
     } catch (error) {
-      if (error instanceof Error) {
-        throw new ToolExecutionError(
-          `Tool ${this.name} execution failed: ${error.message}`,
-          this.name,
-          error,
-        );
-      }
-      throw error;
+      this.logger.error(`Tool ${this.name} execution failed`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      return this.toMCPContent({ success: false, error: this.sanitizeError(error) });
     }
   }
 
@@ -70,6 +75,17 @@ export abstract class BaseTool<TParams = unknown> implements Tool {
     return {
       content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }],
     };
+  }
+
+  private sanitizeError(error: unknown): string {
+    if (error instanceof APIAuthenticationError) return 'Authentication failed: invalid or expired API token';
+    if (error instanceof APIAuthorizationError) return 'Authorization failed: insufficient permissions for this operation';
+    if (error instanceof APINotFoundError) return 'Resource not found';
+    if (error instanceof APIRateLimitError) return 'Productboard API rate limit exceeded, please try again later';
+    if (error instanceof APIValidationError) return `Invalid request: ${error.message}`;
+    if (error instanceof APIServerError) return 'Productboard API server error, please try again';
+    if (error instanceof MCPValidationError) return error.message;
+    return 'An unexpected error occurred';
   }
 
   protected abstract executeInternal(params: TParams): Promise<unknown>;
@@ -92,14 +108,6 @@ export abstract class BaseTool<TParams = unknown> implements Tool {
     // Default implementation returns data as-is
     // Override in subclasses for custom transformations
     return data;
-  }
-
-  protected handleError(error: Error): never {
-    throw new ToolExecutionError(
-      `${this.name} failed: ${error.message}`,
-      this.name,
-      error,
-    );
   }
 
   getMetadata(): { name: string; description: string; inputSchema: Schema; permissions: ToolPermissionMetadata } {
