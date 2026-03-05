@@ -54,11 +54,15 @@ export class BearerTokenAuth {
     }
   }
 
-  getHeaders(token: string): AuthHeaders {
-    return {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-  }
+getHeaders(token: string): AuthHeaders {
+  // .trim() removes hidden spaces at the start or end
+  // .replace() ensures you don't send "Bearer Bearer [token]"
+  const cleanToken = token.trim().replace(/^Bearer\s+/i, '');
+
+  return {
+    'Authorization': `Bearer ${cleanToken}`,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+}
 }
