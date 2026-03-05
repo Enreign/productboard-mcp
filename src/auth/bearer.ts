@@ -20,7 +20,7 @@ export class BearerTokenAuth {
     }
     
     try {
-      const url = "https://api.productboard.com/v2/entities?type=%22feature%22";
+      const url = "https://api.productboard.com/v2/features?pageLimit=1";
       this.logger.debug('Bearer token validation URL', { url });
       this.logger.debug('Headers', this.getHeaders(token));
       
