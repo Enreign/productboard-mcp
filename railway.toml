@@ -1,11 +1,10 @@
 [build]
-builder = "nixpacks"
+builder = "NIXPACKS"
 buildCommand = "npm run build"
 
 [deploy]
-startCommand = "npm start"
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
+startCommand = "node dist/index.js" 
+healthcheckPath = "/sse"
 
 [[deploy.healthchecks]]
 type = "http"
