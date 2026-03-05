@@ -4,11 +4,9 @@ import axios, { AxiosError } from 'axios';
 import { Logger } from '@utils/logger.js';
 
 export class BearerTokenAuth {
-  // private readonly baseUrl: string;
   private readonly logger: Logger;
 
-  constructor(_baseUrl: string) {
-    // this.baseUrl = baseUrl;
+  constructor(private readonly baseUrl: string) {
     this.logger = new Logger({ level: 'debug', name: 'bearer-auth' });
   }
 
@@ -18,9 +16,9 @@ export class BearerTokenAuth {
       this.logger.debug("Skipping token validation in development mode");
       return true;
     }
-    
+
     try {
-      const url = "https://api.productboard.com/v2/features?pageLimit=1";
+      const url = `${this.baseUrl}/users/current`;
       this.logger.debug('Bearer token validation URL', { url });
       this.logger.debug('Headers', this.getHeaders(token));
       
