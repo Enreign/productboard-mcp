@@ -1,7 +1,11 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import type { Server as HttpServer } from 'http';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import express from 'express';
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema
@@ -47,7 +51,7 @@ export interface ServerDependencies {
 
 export class ProductboardMCPServer {
   private server?: Server;
-  private transport?: StdioServerTransport;
+  private httpServer?: HttpServer;
   private dependencies: ServerDependencies;
   private startTime: Date;
   private metrics: ServerMetrics;
@@ -192,16 +196,116 @@ export class ProductboardMCPServer {
   async start(): Promise<void> {
     const { logger } = this.dependencies;
 
-    if (!this.server || !this.transport) {
+    if (!this.server) {
       throw new ServerError('Server not initialized');
     }
 
     try {
-      logger.info('Starting Productboard MCP Server...');
-      await this.server.connect(this.transport);
+      logger.info('Starting Productboard MCP Server (stdio)...');
+      const transport = new StdioServerTransport();
+      await this.server.connect(transport);
       logger.info('Productboard MCP Server started successfully');
     } catch (error) {
       logger.fatal('Failed to start server', error);
+      throw error;
+    }
+  }
+
+  async startHttp(port: number, host: string): Promise<void> {
+    const { logger } = this.dependencies;
+
+    try {
+      logger.info(`Starting Productboard MCP Server (HTTP) on ${host}:${port}...`);
+
+      const app = express();
+      app.use(express.json());
+
+      // Health check endpoint for Railway and load balancers
+      app.get('/health', (_req, res) => {
+        res.json(this.getHealth());
+      });
+
+      // Modern StreamableHTTP transport endpoint (MCP protocol 2025-11-25).
+      // A new MCP SDK Server + Transport is created per stateless request because the
+      // SDK Server is single-use; shared state (metrics, tools, cache) lives on `this`.
+      app.post('/mcp', async (req, res) => {
+        const mcpServer = this.buildMCPServer();
+        const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+        try {
+          await mcpServer.connect(transport);
+          await transport.handleRequest(req, res, req.body);
+          res.on('close', () => {
+            transport.close();
+            mcpServer.close();
+          });
+        } catch (error) {
+          logger.error('Error handling MCP request', error);
+          if (!res.headersSent) {
+            res.status(500).json({
+              jsonrpc: '2.0',
+              error: { code: -32603, message: 'Internal server error' },
+              id: null,
+            });
+          }
+        }
+      });
+
+      // Legacy SSE transport endpoints (MCP protocol 2024-11-05, for older clients).
+      // Sessions are keyed by the transport's session ID; entries are removed on close.
+      const sseTransports: Record<string, { transport: SSEServerTransport; createdAt: number }> = {};
+
+      // Periodically clean up any SSE sessions older than 2 hours in case close events
+      // are not reliably delivered (e.g. ungraceful client disconnects).
+      const SSE_SESSION_TTL_MS = 2 * 60 * 60 * 1000;
+      const sseCleanupInterval = setInterval(() => {
+        const now = Date.now();
+        for (const [id, entry] of Object.entries(sseTransports)) {
+          if (now - entry.createdAt > SSE_SESSION_TTL_MS) {
+            delete sseTransports[id];
+          }
+        }
+      }, 60 * 60 * 1000);
+      sseCleanupInterval.unref();
+
+      app.get('/sse', async (_req, res) => {
+        const transport = new SSEServerTransport('/messages', res);
+        const mcpServer = this.buildMCPServer();
+        sseTransports[transport.sessionId] = { transport, createdAt: Date.now() };
+        try {
+          await mcpServer.connect(transport);
+          res.on('close', () => {
+            delete sseTransports[transport.sessionId];
+            mcpServer.close();
+          });
+        } catch (error) {
+          logger.error('Error handling SSE connection', error);
+          delete sseTransports[transport.sessionId];
+          res.end();
+        }
+      });
+
+      app.post('/messages', async (req, res) => {
+        const sessionId = req.query['sessionId'] as string;
+        const entry = sseTransports[sessionId];
+        if (!entry) {
+          res.status(404).json({ error: 'Session not found' });
+          return;
+        }
+        await entry.transport.handlePostMessage(req, res);
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        this.httpServer = app.listen(port, host, () => {
+          logger.info(`Productboard MCP Server listening on http://${host}:${port}`);
+          logger.info(`  StreamableHTTP endpoint: http://${host}:${port}/mcp`);
+          logger.info(`  SSE endpoint:            http://${host}:${port}/sse`);
+          logger.info(`  Health check:            http://${host}:${port}/health`);
+          resolve();
+        });
+        this.httpServer.on('error', reject);
+      });
+    } catch (error) {
+      logger.fatal('Failed to start HTTP server', error);
       throw error;
     }
   }
@@ -211,7 +315,13 @@ export class ProductboardMCPServer {
 
     try {
       logger.info('Stopping Productboard MCP Server...');
-      
+
+      if (this.httpServer) {
+        await new Promise<void>((resolve) => {
+          this.httpServer!.close(() => resolve());
+        });
+      }
+
       if (this.server) {
         await this.server.close();
       }
@@ -223,10 +333,10 @@ export class ProductboardMCPServer {
     }
   }
 
-  private initializeMCPServer(): void {
+  private buildMCPServer(): Server {
     const { logger, toolRegistry } = this.dependencies;
 
-    this.server = new Server(
+    const server = new Server(
       {
         name: 'productboard-mcp',
         version: pkg.version,
@@ -238,17 +348,15 @@ export class ProductboardMCPServer {
       },
     );
 
-    this.transport = new StdioServerTransport();
-
     // Tools handlers
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+    server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
         tools: toolRegistry.listTools(),
       };
     });
 
     // Tool execution handler
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const startTime = Date.now();
       this.metrics.requestsTotal++;
       this.metrics.activeConnections++;
@@ -311,6 +419,12 @@ export class ProductboardMCPServer {
         this.metrics.activeConnections--;
       }
     });
+
+    return server;
+  }
+
+  private initializeMCPServer(): void {
+    this.server = this.buildMCPServer();
   }
 
   private async handleToolExecution(toolName: string, params: unknown): Promise<unknown> {

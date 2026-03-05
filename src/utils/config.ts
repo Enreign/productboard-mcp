@@ -33,7 +33,8 @@ export class ConfigManager {
     const env = process.env;
 
     const server: Partial<Config['server']> = {};
-    if (env.MCP_SERVER_PORT) server.port = parseInt(env.MCP_SERVER_PORT);
+    if (env.PORT) server.port = parseInt(env.PORT, 10);
+    if (env.MCP_SERVER_PORT) server.port = parseInt(env.MCP_SERVER_PORT, 10);
     if (env.MCP_SERVER_HOST) server.host = env.MCP_SERVER_HOST;
     if (env.MCP_SERVER_TIMEOUT) server.timeout = parseInt(env.MCP_SERVER_TIMEOUT);
 
@@ -101,7 +102,10 @@ export class ConfigManager {
         templatesPath: envConfig.prompts?.templatesPath ?? fileConfig.prompts?.templatesPath ?? './prompts',
       },
       logLevel: envConfig.logLevel || fileConfig.logLevel || baseDefaults.logLevel,
-      logPretty: envConfig.logPretty ?? fileConfig.logPretty ?? baseDefaults.logPretty,
+      logPretty: (() => {
+        const isProduction = (envConfig.nodeEnv || fileConfig.nodeEnv) === 'production';
+        return envConfig.logPretty ?? fileConfig.logPretty ?? !isProduction;
+      })(),
       nodeEnv: envConfig.nodeEnv || fileConfig.nodeEnv || baseDefaults.nodeEnv,
     };
   }
