@@ -18,7 +18,7 @@ export class BearerTokenAuth {
     }
 
     try {
-      const url = `${this.baseUrl}/users/current`;
+      const url = `${this.baseUrl}/entities?pageLimit=1`;
       this.logger.debug('Bearer token validation URL', { url });
       this.logger.debug('Headers', this.getHeaders(token));
       

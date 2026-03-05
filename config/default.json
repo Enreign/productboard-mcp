@@ -5,7 +5,7 @@
     "timeout": 30000
   },
   "api": {
-    "baseUrl": "https://api.productboard.com",
+    "baseUrl": "https://api.productboard.com/v2",
     "timeout": 10000,
     "retryAttempts": 3,
     "retryDelay": 1000

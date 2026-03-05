@@ -78,7 +78,7 @@ export class ConfigManager {
     const baseDefaults: Config = {
       server: { port: 3000, host: '0.0.0.0', timeout: 30000 },
       auth: { type: AuthenticationType.BEARER_TOKEN },
-      api: { baseUrl: 'https://api.productboard.com', timeout: 10000, retryAttempts: 3, retryDelay: 1000 },
+      api: { baseUrl: 'https://api.productboard.com/v2', timeout: 10000, retryAttempts: 3, retryDelay: 1000 },
       rateLimit: { global: 100, windowMs: 60000 },
       cache: { enabled: false, ttl: 300, maxSize: 100 },
       logLevel: 'info',
