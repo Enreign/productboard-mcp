@@ -4,7 +4,7 @@ buildCommand = "npm run build"
 
 [deploy]
 startCommand = "node dist/index.js" 
-healthcheckPath = "/sse"
+healthcheckPath = "/health"
 
 [[deploy.healthchecks]]
 type = "http"
