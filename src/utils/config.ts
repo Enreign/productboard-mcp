@@ -76,7 +76,7 @@ export class ConfigManager {
   private mergeConfigs(fileConfig: Partial<Config>, envConfig: Partial<Config>): Config {
     // Base defaults < file config < env config (env has highest priority)
     const baseDefaults: Config = {
-      server: { port: 3000, host: 'localhost', timeout: 30000 },
+      server: { port: 3000, host: '0.0.0.0', timeout: 30000 },
       auth: { type: AuthenticationType.BEARER_TOKEN },
       api: { baseUrl: 'https://api.productboard.com/v2', timeout: 10000, retryAttempts: 3, retryDelay: 1000 },
       rateLimit: { global: 100, windowMs: 60000 },
