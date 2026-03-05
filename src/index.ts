@@ -1,33 +1,94 @@
 import { config } from 'dotenv';
+import express from 'express';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { ProductboardMCPServer } from '@core/server.js';
 import { ConfigManager } from '@utils/config.js';
 import { Logger } from '@utils/logger.js';
 
-// Load environment variables
 config();
 
 async function main(): Promise<void> {
   const configManager = new ConfigManager();
   const configuration = configManager.get();
-  
   const logger = new Logger({
     level: configuration.logLevel,
     pretty: configuration.logPretty,
   });
 
   try {
-    // Validate configuration
     const validation = configManager.validate();
     if (!validation.valid) {
       logger.fatal('Configuration validation failed', { errors: validation.errors });
       process.exit(1);
     }
 
-    // Create and initialize server
     const server = await ProductboardMCPServer.create(configuration);
     await server.initialize();
 
-    // Handle shutdown signals
+    // --- RAILWAY/SSE WRAPPER START ---
+    const app = express();
+    app.use(express.json());
+
+    // Health check endpoint required by Railway
+    app.get('/health', (_req, res) => {
+      res.json(server.getHealth());
+    });
+
+    // Track active SSE connections by session ID, along with creation timestamp
+    // for TTL-based cleanup of abandoned sessions.
+    const SSE_SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+    const transports: Record<string, { transport: SSEServerTransport; createdAt: number }> = {};
+
+    const sseCleanupInterval = setInterval(() => {
+      const now = Date.now();
+      for (const [id, entry] of Object.entries(transports)) {
+        if (now - entry.createdAt > SSE_SESSION_TTL_MS) {
+          delete transports[id];
+        }
+      }
+    }, 60 * 60 * 1000);
+    sseCleanupInterval.unref();
+
+    // 1. Connection Endpoint: establishes the SSE stream for each client
+    app.get('/sse', async (_req, res) => {
+      logger.info('New SSE connection request received');
+
+      const transport = new SSEServerTransport('/messages', res);
+      transports[transport.sessionId] = { transport, createdAt: Date.now() };
+
+      res.on('close', () => {
+        logger.info(`Session ${transport.sessionId} closed`);
+        delete transports[transport.sessionId];
+      });
+
+      // Connect the MCP server instance to this transport session
+      await server.connectTransport(transport);
+    });
+
+    // 2. Message Endpoint: receives JSON-RPC commands from the client
+    app.post('/messages', async (req, res) => {
+      const sessionId = req.query['sessionId'] as string;
+      const entry = transports[sessionId];
+
+      if (!entry) {
+        res.status(404).send(`Session not found: ${sessionId}`);
+        return;
+      }
+
+      await entry.transport.handlePostMessage(req, res);
+    });
+
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+      logger.info(`Productboard MCP Server is running on port ${PORT}`);
+      const publicDomain = process.env.RAILWAY_PUBLIC_DOMAIN;
+      const sseUrl = publicDomain
+        ? `https://${publicDomain}/sse`
+        : `http://localhost:${PORT}/sse`;
+      logger.info(`SSE Endpoint: ${sseUrl}`);
+    });
+    // --- RAILWAY/SSE WRAPPER END ---
+
     const shutdown = async (signal: string): Promise<void> => {
       logger.info(`Received ${signal}, shutting down gracefully...`);
       try {
@@ -42,23 +103,12 @@ async function main(): Promise<void> {
     process.on('SIGINT', () => shutdown('SIGINT'));
     process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-    // Start server - use HTTP transport when PORT is set (e.g. Railway deployment),
-    // otherwise fall back to stdio transport for local MCP client use.
-    const httpPort = process.env.PORT ? parseInt(process.env.PORT, 10) : null;
-    if (httpPort) {
-      await server.startHttp(httpPort, '0.0.0.0');
-      logger.info('HTTP MCP server is running. Press Ctrl+C to stop.');
-    } else {
-      await server.start();
-      logger.info('Stdio MCP server is running. Press Ctrl+C to stop.');
-    }
   } catch (error) {
     logger.fatal('Server startup failed', error);
     process.exit(1);
   }
 }
 
-// Run main function
 main().catch((error) => {
   process.stderr.write(`Unhandled error: ${error}\n`);
   process.exit(1);

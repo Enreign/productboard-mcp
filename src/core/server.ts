@@ -193,6 +193,13 @@ export class ProductboardMCPServer {
     }
   }
 
+  async connectTransport(transport: SSEServerTransport): Promise<void> {
+    if (!this.server) {
+      throw new ServerError('Server not initialized');
+    }
+    await this.server.connect(transport);
+  }
+
   async start(): Promise<void> {
     const { logger } = this.dependencies;
 
