@@ -39,7 +39,7 @@
   "homepage": "https://github.com/Enreign/productboard-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "axios": "^1.6.0",
+    "axios": "^1.13.5",
     "dotenv": "^16.5.0",
     "jsonschema": "^1.4.1",
     "lru-cache": "^10.0.1",
