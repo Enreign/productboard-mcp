@@ -102,6 +102,38 @@ Add to `.mcp.json` in your project root (or run `claude mcp add`):
 }
 ```
 
+### Railway (Cloud Deployment)
+
+Deploy to [Railway](https://railway.app) to run the MCP server over HTTP so any MCP client can connect to it remotely.
+
+1. **Fork or push this repo** to your GitHub account.
+2. **Create a new Railway project** → *Deploy from GitHub repo* → select the repo.
+3. **Set the required environment variable** in Railway's *Variables* tab:
+   - `PRODUCTBOARD_API_TOKEN` — your Productboard API token
+   - `NODE_ENV=production` (recommended — disables pretty-printing for structured logs)
+4. **Deploy.** Railway auto-detects Node.js, builds with `npm ci && npm run build`, and starts with `npm start`.
+
+When `PORT` is injected by Railway the server automatically starts in **HTTP mode** and exposes:
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /mcp` | StreamableHTTP transport (MCP protocol 2025-11-25) |
+| `GET /sse` | SSE transport (legacy MCP protocol 2024-11-05) |
+| `POST /messages` | Message endpoint for SSE sessions |
+| `GET /health` | Health check (used by Railway) |
+
+Connect Claude or another MCP client to your Railway URL:
+
+```json
+{
+  "mcpServers": {
+    "productboard": {
+      "url": "https://your-app.railway.app/mcp"
+    }
+  }
+}
+```
+
 ## Environment Variables
 
 | Variable | Default | Description |
@@ -110,7 +142,10 @@ Add to `.mcp.json` in your project root (or run `claude mcp add`):
 | `PRODUCTBOARD_AUTH_TYPE` | `bearer` | Auth method: `bearer` or `oauth2` |
 | `PRODUCTBOARD_API_BASE_URL` | `https://api.productboard.com/v2` | API base URL |
 | `PRODUCTBOARD_API_TIMEOUT` | `10000` | Request timeout in ms |
+| `PORT` | — | When set, starts HTTP server on this port (automatically set by Railway) |
+| `MCP_SERVER_PORT` | `3000` | HTTP port override (takes precedence over `PORT`) |
 | `LOG_LEVEL` | `info` | Log level: `debug`, `info`, `warn`, `error` |
+| `NODE_ENV` | `development` | Set to `production` for JSON logs and production defaults |
 | `RATE_LIMIT_GLOBAL` | `100` | Max requests per window |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window in ms |
 
