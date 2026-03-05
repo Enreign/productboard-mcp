@@ -68,7 +68,7 @@ export class ListReleasesTool extends BaseTool<ListReleasesParams> {
     this.logger.info('Listing releases');
 
     // Only pass filters supported by the API - not limit/offset
-    const queryParams: Record<string, any> = { type: 'release' };
+    const queryParams: Record<string, any> = { 'type[]': 'release' };
     if (params.release_group_id) queryParams.release_group_id = params.release_group_id;
     if (params.status) queryParams.status = params.status;
     if (params.date_from) queryParams.date_from = params.date_from;
@@ -88,10 +88,11 @@ export class ListReleasesTool extends BaseTool<ListReleasesParams> {
     const stripHtml = (s: string) => s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
     const formatted = releases.map((r: any, i: number) =>
-      `${offset + i + 1}. ${r.name || 'Untitled Release'}\n` +
-      `   Status: ${r.state?.name || r.status?.name || r.status || 'Unknown'}\n` +
-      (r.release_date ? `   Date: ${r.release_date}\n` : '') +
-      (r.description ? `   Description: ${stripHtml(r.description).substring(0, 150)}\n` : '')
+      `${offset + i + 1}. ${r.fields?.name || 'Untitled Release'}\n` +
+      `   ID: ${r.id}\n` +
+      `   Status: ${r.fields?.state?.name || r.fields?.status?.name || r.fields?.status || 'Unknown'}\n` +
+      (r.fields?.release_date ? `   Date: ${r.fields.release_date}\n` : '') +
+      (r.fields?.description ? `   Description: ${stripHtml(r.fields.description).substring(0, 150)}\n` : '')
     );
 
     const summary = releases.length > 0

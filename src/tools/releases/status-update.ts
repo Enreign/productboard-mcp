@@ -5,9 +5,8 @@ import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface ReleaseStatusUpdateParams {
   id: string;
-  status: 'planned' | 'in_progress' | 'released';
+  status_id: string;
   release_notes?: string;
-  actual_date?: string;
 }
 
 export class ReleaseStatusUpdateTool extends BaseTool<ReleaseStatusUpdateParams> {
@@ -17,25 +16,19 @@ export class ReleaseStatusUpdateTool extends BaseTool<ReleaseStatusUpdateParams>
       'Update release status and publish release notes',
       {
         type: 'object',
-        required: ['id', 'status'],
+        required: ['id', 'status_id'],
         properties: {
           id: {
             type: 'string',
             description: 'Release ID',
           },
-          status: {
+          status_id: {
             type: 'string',
-            enum: ['planned', 'in_progress', 'released'],
-            description: 'New release status',
+            description: 'Status ID (UUID from the status object on the release, use pb_release_list to find current status IDs)',
           },
           release_notes: {
             type: 'string',
-            description: 'Release notes (required when status is "released")',
-          },
-          actual_date: {
-            type: 'string',
-            format: 'date',
-            description: 'Actual release date (for released status)',
+            description: 'Release notes',
           },
         },
       },
@@ -52,25 +45,16 @@ export class ReleaseStatusUpdateTool extends BaseTool<ReleaseStatusUpdateParams>
   protected async executeInternal(params: ReleaseStatusUpdateParams): Promise<unknown> {
     this.logger.info('Updating release status', {
       id: params.id,
-      status: params.status
+      status_id: params.status_id,
     });
 
-    // Validate release notes for released status
-    if (params.status === 'released' && !params.release_notes) {
-      return {
-        success: false,
-        error: 'Release notes are required when status is "released"',
-      };
-    }
+    const fields: Record<string, unknown> = {
+      status: { id: params.status_id },
+    };
+    if (params.release_notes) fields.release_notes = params.release_notes;
 
     const response = await this.apiClient.patch(`/entities/${params.id}`, {
-      data: {
-        fields: {
-          status: params.status,
-          release_notes: params.release_notes,
-          actual_date: params.actual_date,
-        },
-      },
+      data: { fields },
     });
 
     return {

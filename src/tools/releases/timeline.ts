@@ -58,7 +58,7 @@ export class ReleaseTimelineTool extends BaseTool<ReleaseTimelineParams> {
     if (params.date_to) queryParams.date_to = params.date_to;
     if (params.include_features !== undefined) queryParams.include_features = params.include_features;
 
-    queryParams.type = 'releaseGroup';
+    queryParams['type[]'] = 'releaseGroup';
     const response = await this.apiClient.makeRequest({
       method: 'GET',
       endpoint: '/entities',

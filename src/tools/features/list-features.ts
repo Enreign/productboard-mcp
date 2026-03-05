@@ -89,7 +89,7 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
 
   protected async executeInternal(params: ListFeaturesParams): Promise<unknown> {
     // Build query parameters for v2 /entities endpoint
-    const queryParams: Record<string, any> = { type: 'feature' };
+    const queryParams: Record<string, any> = { 'type[]': 'feature' };
 
     // Add supported parameters only
     if (params.status) queryParams.status = params.status;
@@ -125,10 +125,10 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
     // Format response for MCP protocol
     const formattedFeatures = paginatedFeatures.map((feature: any) => ({
       id: feature.id,
-      name: feature.name || 'Untitled Feature',
-      description: feature.description ? stripHtml(feature.description) : '',
-      status: feature.status?.name || 'Unknown',
-      owner: feature.owner?.email || 'Unassigned',
+      name: feature.fields?.name || 'Untitled Feature',
+      description: feature.fields?.description ? stripHtml(feature.fields.description) : '',
+      status: feature.fields?.status?.name || 'Unknown',
+      owner: feature.fields?.owner?.email || 'Unassigned',
       createdAt: feature.createdAt,
       updatedAt: feature.updatedAt,
     }));
@@ -136,8 +136,9 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
     // Create a text summary of the features
     const summary = formattedFeatures.length > 0
       ? `Found ${features.length} features total, showing ${formattedFeatures.length} features:\n\n` +
-        formattedFeatures.map((f, i) => 
+        formattedFeatures.map((f, i) =>
           `${i + 1}. ${f.name}\n` +
+          `   ID: ${f.id}\n` +
           `   Status: ${f.status}\n` +
           `   Owner: ${f.owner}\n` +
           `   Description: ${f.description ? f.description.substring(0, 200) + (f.description.length > 200 ? '...' : '') : 'No description'}\n`

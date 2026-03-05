@@ -50,9 +50,18 @@ export class CreateProductTool extends BaseTool<CreateProductParams> {
   protected async executeInternal(params: CreateProductParams): Promise<unknown> {
     this.logger.info('Creating product', { name: params.name });
 
-    const fields = { ...params } as Record<string, unknown>;
+    const { parent_id, owner_email, ...rest } = params;
+    const fields: Record<string, unknown> = { ...rest };
     if (fields.description) fields.description = (fields.description as string).startsWith('<') ? fields.description : `<p>${fields.description}</p>`;
-    const response = await this.apiClient.post('/entities', { data: { type: 'product', fields } });
+    if (owner_email) fields.owner = { email: owner_email };
+
+    const relationships: Array<{ type: string; target: { id: string } }> = [];
+    if (parent_id) relationships.push({ type: 'parent', target: { id: parent_id } });
+
+    const requestData: Record<string, unknown> = { type: 'product', fields };
+    if (relationships.length > 0) requestData.relationships = relationships;
+
+    const response = await this.apiClient.post('/entities', { data: requestData });
 
     return {
       success: true,

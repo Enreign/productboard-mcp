@@ -22,12 +22,6 @@ export class CreateFeatureTool extends BaseTool<FeaturePayload> {
             type: 'string',
             description: 'Detailed feature description',
           },
-          status: {
-            type: 'string',
-            enum: ['new', 'in_progress', 'validation', 'done', 'archived'],
-            default: 'new',
-            description: 'Feature status',
-          },
           product_id: {
             type: 'string',
             description: 'ID of the parent product',
@@ -68,10 +62,7 @@ export class CreateFeatureTool extends BaseTool<FeaturePayload> {
 
     const toHtml = (text: string) => text.startsWith('<') ? text : `<p>${text}</p>`;
 
-    const fields: Record<string, unknown> = {
-      ...rest,
-      status: params.status || 'new',
-    };
+    const fields: Record<string, unknown> = { ...rest };
     if (fields.description) fields.description = toHtml(fields.description as string);
     if (owner_email) fields.owner = { email: owner_email };
 

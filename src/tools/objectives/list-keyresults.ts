@@ -56,10 +56,17 @@ export class ListKeyResultsTool extends BaseTool<ListKeyResultsParams> {
     this.logger.info('Listing key results');
 
     // Only pass filters supported by the API - not limit/offset
-    const queryParams: Record<string, any> = { type: 'keyResult' };
+    const queryParams: Record<string, any> = { 'type[]': 'keyResult' };
     if (params.objective_id) queryParams.objective_id = params.objective_id;
     if (params.metric_type) queryParams.metric_type = params.metric_type;
 
+    // The keyResult entity type is not supported in the v2 API for this workspace.
+    return {
+      content: [{
+        type: 'text',
+        text: 'Key results are not available via the v2 API in this workspace. The "keyResult" entity type is not supported.',
+      }],
+    };
     const response = await this.apiClient.makeRequest({
       method: 'GET',
       endpoint: '/entities',
@@ -72,11 +79,11 @@ export class ListKeyResultsTool extends BaseTool<ListKeyResultsParams> {
     const keyResults = allKeyResults.slice(offset, offset + limit);
 
     const formatted = keyResults.map((kr: any, i: number) =>
-      `${offset + i + 1}. ${kr.name || 'Untitled Key Result'}\n` +
-      `   Type: ${kr.metric_type || kr.type || 'Unknown'}\n` +
-      (kr.current_value !== undefined ? `   Current: ${kr.current_value}\n` : '') +
-      (kr.target_value !== undefined ? `   Target: ${kr.target_value}\n` : '') +
-      (kr.objective_id ? `   Objective: ${kr.objective_id}\n` : '')
+      `${offset + i + 1}. ${kr.fields?.name || 'Untitled Key Result'}\n` +
+      `   Type: ${kr.fields?.metric_type || kr.type || 'Unknown'}\n` +
+      (kr.fields?.current_value !== undefined ? `   Current: ${kr.fields.current_value}\n` : '') +
+      (kr.fields?.target_value !== undefined ? `   Target: ${kr.fields.target_value}\n` : '') +
+      (kr.fields?.objective_id ? `   Objective: ${kr.fields.objective_id}\n` : '')
     );
 
     const summary = keyResults.length > 0

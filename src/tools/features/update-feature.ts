@@ -7,9 +7,8 @@ interface UpdateFeatureParams {
   id: string;
   name?: string;
   description?: string;
-  status?: 'new' | 'in_progress' | 'validation' | 'done' | 'archived';
+  status_id?: string;
   owner_email?: string;
-  priority?: 'critical' | 'high' | 'medium' | 'low';
   tags?: string[];
 }
 
@@ -35,20 +34,14 @@ export class UpdateFeatureTool extends BaseTool<UpdateFeatureParams> {
             type: 'string',
             description: 'New feature description',
           },
-          status: {
+          status_id: {
             type: 'string',
-            enum: ['new', 'in_progress', 'validation', 'done', 'archived'],
-            description: 'New feature status',
+            description: 'Status ID (UUID from the status object on the feature, e.g. from pb_feature_get)',
           },
           owner_email: {
             type: 'string',
             format: 'email',
             description: 'New owner email',
-          },
-          priority: {
-            type: 'string',
-            enum: ['critical', 'high', 'medium', 'low'],
-            description: 'New priority level',
           },
           tags: {
             type: 'array',
@@ -92,10 +85,11 @@ export class UpdateFeatureTool extends BaseTool<UpdateFeatureParams> {
   protected async executeInternal(params: UpdateFeatureParams): Promise<unknown> {
     const { id, ...updateData } = params;
 
-    const { owner_email, ...rest } = updateData as Record<string, unknown>;
+    const { owner_email, status_id, ...rest } = updateData as Record<string, unknown>;
     const fields: Record<string, unknown> = { ...rest };
     if (fields.description) fields.description = (fields.description as string).startsWith('<') ? fields.description : `<p>${fields.description}</p>`;
     if (owner_email) fields.owner = { email: owner_email };
+    if (status_id) fields.status = { id: status_id };
 
     const response = await this.apiClient.patch(`/entities/${id}`, { data: { fields } });
 

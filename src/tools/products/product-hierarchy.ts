@@ -47,7 +47,7 @@ export class ProductHierarchyTool extends BaseTool<ProductHierarchyParams> {
   protected async executeInternal(params: ProductHierarchyParams): Promise<unknown> {
     this.logger.info('Getting product hierarchy');
 
-    const queryParams: Record<string, any> = { type: 'product' };
+    const queryParams: Record<string, any> = { 'type[]': 'product' };
     if (params.product_id) queryParams.parent_id = params.product_id;
 
     const response = await this.apiClient.get('/entities', queryParams);
@@ -56,7 +56,7 @@ export class ProductHierarchyTool extends BaseTool<ProductHierarchyParams> {
 
     const formatTree = (items: any[], indent = 0): string =>
       items.map(p =>
-        `${'  '.repeat(indent)}• ${p.name || 'Untitled'} (ID: ${p.id})\n` +
+        `${'  '.repeat(indent)}• ${p.fields?.name || 'Untitled'} (ID: ${p.id})\n` +
         (p.children?.length ? formatTree(p.children, indent + 1) : '')
       ).join('');
 

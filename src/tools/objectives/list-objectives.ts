@@ -63,7 +63,7 @@ export class ListObjectivesTool extends BaseTool<ListObjectivesParams> {
     this.logger.info('Listing objectives');
 
     // Only pass filters supported by the API, not pagination params
-    const queryParams: Record<string, any> = { type: 'objective' };
+    const queryParams: Record<string, any> = { 'type[]': 'objective' };
     if (params.status) queryParams.status = params.status;
     if (params.owner_email) queryParams.owner_email = params.owner_email;
     if (params.period) queryParams.period = params.period;
@@ -82,10 +82,10 @@ export class ListObjectivesTool extends BaseTool<ListObjectivesParams> {
     const stripHtml = (s: string) => s.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
 
     const formatted = objectives.map((obj: any, i: number) =>
-      `${offset + i + 1}. ${obj.name || 'Untitled Objective'}\n` +
-      `   Status: ${obj.status?.name || (typeof obj.status === 'string' ? obj.status : 'Unknown')}\n` +
-      `   Owner: ${obj.owner?.email || 'Unassigned'}\n` +
-      (obj.description ? `   Description: ${stripHtml(obj.description).substring(0, 120)}\n` : '')
+      `${offset + i + 1}. ${obj.fields?.name || 'Untitled Objective'}\n` +
+      `   Status: ${obj.fields?.status?.name || (typeof obj.fields?.status === 'string' ? obj.fields.status : 'Unknown')}\n` +
+      `   Owner: ${obj.fields?.owner?.email || 'Unassigned'}\n` +
+      (obj.fields?.description ? `   Description: ${stripHtml(obj.fields.description).substring(0, 120)}\n` : '')
     );
 
     const summary = objectives.length > 0

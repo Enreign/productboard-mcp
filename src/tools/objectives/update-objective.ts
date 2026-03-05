@@ -7,10 +7,8 @@ interface UpdateObjectiveParams {
   id: string;
   name?: string;
   description?: string;
-  status?: 'active' | 'completed' | 'cancelled';
+  status_id?: string;
   owner_email?: string;
-  due_date?: string;
-  period?: 'quarter' | 'year';
 }
 
 export class UpdateObjectiveTool extends BaseTool<UpdateObjectiveParams> {
@@ -34,25 +32,14 @@ export class UpdateObjectiveTool extends BaseTool<UpdateObjectiveParams> {
             type: 'string',
             description: 'Objective description',
           },
-          status: {
+          status_id: {
             type: 'string',
-            enum: ['active', 'completed', 'cancelled'],
-            description: 'Objective status',
+            description: 'Status ID (UUID from the status object on the objective)',
           },
           owner_email: {
             type: 'string',
             format: 'email',
             description: 'Objective owner',
-          },
-          due_date: {
-            type: 'string',
-            format: 'date',
-            description: 'Target completion date',
-          },
-          period: {
-            type: 'string',
-            enum: ['quarter', 'year'],
-            description: 'Objective period',
           },
         },
       },
@@ -69,16 +56,18 @@ export class UpdateObjectiveTool extends BaseTool<UpdateObjectiveParams> {
   protected async executeInternal(params: UpdateObjectiveParams): Promise<unknown> {
     this.logger.info('Updating objective', { id: params.id });
 
-    const { id, ...updateData } = params;
+    const { id, owner_email, status_id, ...rest } = params;
 
-    if (Object.keys(updateData).length === 0) {
-      return {
-        success: false,
-        error: 'No update fields provided',
-      };
+    if (Object.keys(rest).length === 0 && !owner_email && !status_id) {
+      return { success: false, error: 'No update fields provided' };
     }
 
-    const response = await this.apiClient.patch(`/entities/${id}`, { data: { fields: updateData } });
+    const fields: Record<string, unknown> = { ...rest };
+    if (fields.description) fields.description = (fields.description as string).startsWith('<') ? fields.description : `<p>${fields.description}</p>`;
+    if (owner_email) fields.owner = { email: owner_email };
+    if (status_id) fields.status = { id: status_id };
+
+    const response = await this.apiClient.patch(`/entities/${id}`, { data: { fields } });
 
     return {
       success: true,

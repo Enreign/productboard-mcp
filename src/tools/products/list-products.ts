@@ -45,7 +45,7 @@ export class ListProductsTool extends BaseTool<ListProductsParams> {
   protected async executeInternal(params: ListProductsParams): Promise<unknown> {
     this.logger.info('Listing products');
 
-    const queryParams: Record<string, any> = { type: 'product' };
+    const queryParams: Record<string, any> = { 'type[]': 'product' };
     if (params.parent_id) queryParams.parent_id = params.parent_id;
 
     const response = await this.apiClient.makeRequest({
@@ -59,9 +59,9 @@ export class ListProductsTool extends BaseTool<ListProductsParams> {
     const stripHtml = (s: string) => s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 
     const formatted = products.map((p: any, i: number) =>
-      `${i + 1}. ${p.name || 'Untitled Product'}\n` +
+      `${i + 1}. ${p.fields?.name || 'Untitled Product'}\n` +
       `   ID: ${p.id}\n` +
-      (p.description ? `   Description: ${stripHtml(p.description).substring(0, 120)}\n` : '')
+      (p.fields?.description ? `   Description: ${stripHtml(p.fields.description).substring(0, 120)}\n` : '')
     );
 
     const summary = products.length > 0

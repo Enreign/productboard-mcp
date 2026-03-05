@@ -61,6 +61,11 @@ export class UpdateKeyResultTool extends BaseTool<UpdateKeyResultParams> {
   protected async executeInternal(params: UpdateKeyResultParams): Promise<unknown> {
     this.logger.info('Updating key result', { id: params.id });
 
+    return {
+      success: false,
+      error: 'Key results are not available via the v2 API in this workspace. The "keyResult" entity type is not supported.',
+    };
+
     const { id, ...updateData } = params;
 
     if (Object.keys(updateData).length === 0) {
@@ -69,7 +74,6 @@ export class UpdateKeyResultTool extends BaseTool<UpdateKeyResultParams> {
         error: 'No update fields provided',
       };
     }
-
     const response = await this.apiClient.patch(`/entities/${id}`, { data: { fields: updateData } });
 
     return {

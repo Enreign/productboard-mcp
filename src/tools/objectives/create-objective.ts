@@ -7,8 +7,6 @@ interface CreateObjectiveParams {
   name: string;
   description: string;
   owner_email?: string;
-  due_date?: string;
-  period?: 'quarter' | 'year';
 }
 
 export class CreateObjectiveTool extends BaseTool<CreateObjectiveParams> {
@@ -33,16 +31,6 @@ export class CreateObjectiveTool extends BaseTool<CreateObjectiveParams> {
             format: 'email',
             description: 'Objective owner',
           },
-          due_date: {
-            type: 'string',
-            format: 'date',
-            description: 'Target completion date',
-          },
-          period: {
-            type: 'string',
-            enum: ['quarter', 'year'],
-            description: 'Objective period',
-          },
         },
       },
       {
@@ -58,8 +46,10 @@ export class CreateObjectiveTool extends BaseTool<CreateObjectiveParams> {
   protected async executeInternal(params: CreateObjectiveParams): Promise<unknown> {
     this.logger.info('Creating objective', { name: params.name });
 
-    const fields = { ...params } as Record<string, unknown>;
+    const { owner_email, ...rest } = params;
+    const fields: Record<string, unknown> = { ...rest };
     if (fields.description) fields.description = (fields.description as string).startsWith('<') ? fields.description : `<p>${fields.description}</p>`;
+    if (owner_email) fields.owner = { email: owner_email };
     const response = await this.apiClient.post('/entities', { data: { type: 'objective', fields } });
 
     return {

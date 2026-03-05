@@ -6,9 +6,8 @@ import { Permission, AccessLevel } from '@auth/permissions.js';
 interface UpdateReleaseParams {
   id: string;
   name?: string;
-  date?: string;
   description?: string;
-  status?: 'planned' | 'in_progress' | 'released';
+  status_id?: string;
   release_group_id?: string;
 }
 
@@ -29,19 +28,13 @@ export class UpdateReleaseTool extends BaseTool<UpdateReleaseParams> {
             type: 'string',
             description: 'Release name/version',
           },
-          date: {
-            type: 'string',
-            format: 'date',
-            description: 'Release date',
-          },
           description: {
             type: 'string',
             description: 'Release description',
           },
-          status: {
+          status_id: {
             type: 'string',
-            enum: ['planned', 'in_progress', 'released'],
-            description: 'Release status',
+            description: 'Status ID (UUID from the status object on the release)',
           },
           release_group_id: {
             type: 'string',
@@ -62,16 +55,23 @@ export class UpdateReleaseTool extends BaseTool<UpdateReleaseParams> {
   protected async executeInternal(params: UpdateReleaseParams): Promise<unknown> {
     this.logger.info('Updating release', { id: params.id });
 
-    const { id, ...updateData } = params;
+    const { id, release_group_id, status_id, ...rest } = params;
 
-    if (Object.keys(updateData).length === 0) {
-      return {
-        success: false,
-        error: 'No update fields provided',
-      };
+    if (Object.keys(rest).length === 0 && !status_id && !release_group_id) {
+      return { success: false, error: 'No update fields provided' };
     }
 
-    const response = await this.apiClient.patch(`/entities/${id}`, { data: { fields: updateData } });
+    const fields: Record<string, unknown> = { ...rest };
+    if (fields.description) fields.description = (fields.description as string).startsWith('<') ? fields.description : `<p>${fields.description}</p>`;
+    if (status_id) fields.status = { id: status_id };
+
+    const relationships: Array<{ type: string; target: { id: string } }> = [];
+    if (release_group_id) relationships.push({ type: 'parent', target: { id: release_group_id } });
+
+    const requestData: Record<string, unknown> = { fields };
+    if (relationships.length > 0) requestData.relationships = relationships;
+
+    const response = await this.apiClient.patch(`/entities/${id}`, { data: requestData });
 
     return {
       success: true,

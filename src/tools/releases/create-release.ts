@@ -5,7 +5,6 @@ import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface CreateReleaseParams {
   name: string;
-  date: string;
   description?: string;
   release_group_id?: string;
 }
@@ -17,16 +16,11 @@ export class CreateReleaseTool extends BaseTool<CreateReleaseParams> {
       'Create a new release',
       {
         type: 'object',
-        required: ['name', 'date'],
+        required: ['name'],
         properties: {
           name: {
             type: 'string',
             description: 'Release name/version',
-          },
-          date: {
-            type: 'string',
-            format: 'date',
-            description: 'Release date',
           },
           description: {
             type: 'string',
@@ -34,7 +28,7 @@ export class CreateReleaseTool extends BaseTool<CreateReleaseParams> {
           },
           release_group_id: {
             type: 'string',
-            description: 'Parent release group ID',
+            description: 'Parent release group ID (use pb_release_timeline to find release group IDs)',
           },
         },
       },
@@ -51,7 +45,17 @@ export class CreateReleaseTool extends BaseTool<CreateReleaseParams> {
   protected async executeInternal(params: CreateReleaseParams): Promise<unknown> {
     this.logger.info('Creating release', { name: params.name });
 
-    const response = await this.apiClient.post('/entities', { data: { type: 'release', fields: params } });
+    const { release_group_id, ...rest } = params;
+    const fields: Record<string, unknown> = { ...rest };
+    if (fields.description) fields.description = (fields.description as string).startsWith('<') ? fields.description : `<p>${fields.description}</p>`;
+
+    const relationships: Array<{ type: string; target: { id: string } }> = [];
+    if (release_group_id) relationships.push({ type: 'parent', target: { id: release_group_id } });
+
+    const requestData: Record<string, unknown> = { type: 'release', fields };
+    if (relationships.length > 0) requestData.relationships = relationships;
+
+    const response = await this.apiClient.post('/entities', { data: requestData });
 
     return {
       success: true,

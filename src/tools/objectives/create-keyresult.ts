@@ -64,6 +64,10 @@ export class CreateKeyResultTool extends BaseTool<CreateKeyResultParams> {
       objective_id: params.objective_id
     });
 
+    return {
+      success: false,
+      error: 'Key results are not available via the v2 API in this workspace. The "keyResult" entity type is not supported.',
+    };
     const response = await this.apiClient.post('/entities', { data: { type: 'keyResult', fields: params } });
 
     return {
