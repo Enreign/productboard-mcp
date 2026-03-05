@@ -49,6 +49,7 @@ let logger: Logger;
 
 // IDs discovered from the workspace during setup
 let componentId: string;
+let productId: string;
 let releaseGroupId: string;
 let releaseGroupIds: string[] = [];
 
@@ -117,10 +118,16 @@ beforeAll(async () => {
     rateLimiter,
   );
 
-  // Discover a component and release group to use as parents in create tests
+  // Discover a component or product to use as parent in feature create tests
   const entitiesResp = await apiClient.get<any>('/entities', { 'type[]': 'component' });
   const components = entitiesResp?.data ?? [];
   if (components.length > 0) componentId = components[0].id;
+
+  if (!componentId) {
+    const productsResp = await apiClient.get<any>('/entities', { 'type[]': 'product' });
+    const products = productsResp?.data ?? [];
+    if (products.length > 0) productId = products[0].id;
+  }
 
   const rgResp = await apiClient.get<any>('/entities', { 'type[]': 'releaseGroup' });
   const releaseGroups = rgResp?.data ?? [];
@@ -205,14 +212,19 @@ describe('pb_feature_get', () => {
 
 describe('pb_feature_create', () => {
   let createdFeatureId: string;
+  const hasParent = () => !!(componentId || productId);
 
-  itif(SKIP || !componentId)('creates a feature under a component', async () => {
+  itif(SKIP)('creates a feature under a component or product', async () => {
+    if (!hasParent()) return;
     const tools = makeTools();
-    const result = await tools.featureCreate.execute({
+    const params: Record<string, string> = {
       name: 'E2E Test Feature',
       description: 'Created by e2e test suite',
-      component_id: componentId,
-    });
+    };
+    if (componentId) params.component_id = componentId;
+    else params.product_id = productId;
+
+    const result = await tools.featureCreate.execute(params as any);
     const data = parsed(result);
     expect(data.success).toBe(true);
     createdFeatureId = data.data?.data?.id ?? data.data?.id;
@@ -220,7 +232,7 @@ describe('pb_feature_create', () => {
     cleanup.push({ type: 'entity', id: createdFeatureId });
   });
 
-  itif(SKIP || !componentId)('updates the created feature', async () => {
+  itif(SKIP)('updates the created feature', async () => {
     if (!createdFeatureId) return;
     const tools = makeTools();
     const result = await tools.featureUpdate.execute({
@@ -230,7 +242,7 @@ describe('pb_feature_create', () => {
     expect(parsed(result).success).toBe(true);
   });
 
-  itif(SKIP || !componentId)('archives (soft-delete) the created feature', async () => {
+  itif(SKIP)('archives (soft-delete) the created feature', async () => {
     if (!createdFeatureId) return;
     const tools = makeTools();
     const result = await tools.featureDelete.execute({
@@ -242,7 +254,7 @@ describe('pb_feature_create', () => {
     expect(data.data?.action).toBe('archived');
   });
 
-  itif(SKIP || !componentId)('permanently deletes the created feature', async () => {
+  itif(SKIP)('permanently deletes the created feature', async () => {
     if (!createdFeatureId) return;
     const tools = makeTools();
     const result = await tools.featureDelete.execute({
