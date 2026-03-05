@@ -39,8 +39,8 @@ async function main(): Promise<void> {
       }
     };
 
-    process.on('SIGINT', () => shutdown('SIGINT'));
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => { void shutdown('SIGINT'); });
+    process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
 
     // Start server - use HTTP transport when PORT is set (e.g. Railway deployment),
     // otherwise fall back to stdio transport for local MCP client use.

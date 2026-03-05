@@ -235,8 +235,8 @@ export class ProductboardMCPServer {
           await mcpServer.connect(transport);
           await transport.handleRequest(req, res, req.body);
           res.on('close', () => {
-            transport.close();
-            mcpServer.close();
+            void transport.close();
+            void mcpServer.close();
           });
         } catch (error) {
           logger.error('Error handling MCP request', error);
@@ -275,7 +275,7 @@ export class ProductboardMCPServer {
           await mcpServer.connect(transport);
           res.on('close', () => {
             delete sseTransports[transport.sessionId];
-            mcpServer.close();
+            void mcpServer.close();
           });
         } catch (error) {
           logger.error('Error handling SSE connection', error);
@@ -349,6 +349,7 @@ export class ProductboardMCPServer {
     );
 
     // Tools handlers
+    // eslint-disable-next-line @typescript-eslint/require-await
     server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
         tools: toolRegistry.listTools(),
