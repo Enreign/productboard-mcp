@@ -4,7 +4,6 @@ import { Logger } from '@utils/logger.js';
 import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface ListReleasesParams {
-  release_group_id?: string;
   status?: 'planned' | 'in_progress' | 'released';
   date_from?: string;
   date_to?: string;
@@ -16,14 +15,10 @@ export class ListReleasesTool extends BaseTool<ListReleasesParams> {
   constructor(apiClient: ProductboardAPIClient, logger: Logger) {
     super(
       'pb_release_list',
-      'List releases with optional filtering',
+      'List releases with optional filtering. To browse by release group, use pb_release_timeline instead.',
       {
         type: 'object',
         properties: {
-          release_group_id: {
-            type: 'string',
-            description: 'Filter by release group',
-          },
           status: {
             type: 'string',
             enum: ['planned', 'in_progress', 'released'],
@@ -69,7 +64,6 @@ export class ListReleasesTool extends BaseTool<ListReleasesParams> {
 
     // Only pass filters supported by the API - not limit/offset
     const queryParams: Record<string, any> = { 'type[]': 'release' };
-    if (params.release_group_id) queryParams.release_group_id = params.release_group_id;
     if (params.status) queryParams.status = params.status;
     if (params.date_from) queryParams.date_from = params.date_from;
     if (params.date_to) queryParams.date_to = params.date_to;
@@ -90,7 +84,7 @@ export class ListReleasesTool extends BaseTool<ListReleasesParams> {
     const formatted = releases.map((r: any, i: number) =>
       `${offset + i + 1}. ${r.fields?.name || 'Untitled Release'}\n` +
       `   ID: ${r.id}\n` +
-      `   Status: ${r.fields?.state?.name || r.fields?.status?.name || r.fields?.status || 'Unknown'}\n` +
+      `   Status: ${r.fields?.state?.name || r.fields?.status?.name || r.fields?.status || 'Unknown'}${r.fields?.status?.id ? ` (ID: ${r.fields.status.id})` : ''}\n` +
       (r.fields?.release_date ? `   Date: ${r.fields.release_date}\n` : '') +
       (r.fields?.description ? `   Description: ${stripHtml(r.fields.description).substring(0, 150)}\n` : '')
     );
