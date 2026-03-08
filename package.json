@@ -1,11 +1,23 @@
 {
-  "name": "productboard-mcp",
-  "version": "0.2.0",
+  "name": "@enreign/productboard-mcp",
+  "version": "0.2.1",
   "description": "MCP server for Productboard API integration",
   "main": "dist/index.js",
+  "bin": "./productboard-mcp.js",
+  "files": [
+    "productboard-mcp.js",
+    "dist",
+    "config",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "type": "module",
   "scripts": {
-    "build": "tsc && node scripts/fix-imports.js",
+    "build": "tsc && node scripts/fix-imports.js && chmod +x dist/index.js",
+    "prepublishOnly": "npm run build",
     "dev": "tsx --watch src/index.ts",
     "start": "node dist/index.js",
     "test": "jest",
@@ -38,13 +50,22 @@
   },
   "homepage": "https://github.com/Enreign/productboard-mcp#readme",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.26.0",
-    "axios": "^1.6.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "axios": "^1.13.5",
     "dotenv": "^16.5.0",
     "jsonschema": "^1.4.1",
     "lru-cache": "^10.0.1",
     "pino": "^8.16.0",
     "pino-pretty": "^10.2.3"
+  },
+  "overrides": {
+    "ajv": ">=6.14.0",
+    "minimatch": ">=9.0.7",
+    "js-yaml": ">=4.1.1",
+    "form-data": ">=4.0.4",
+    "hono": ">=4.12.4",
+    "@hono/node-server": ">=1.19.10",
+    "express-rate-limit": ">=8.2.2"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
@@ -55,7 +76,7 @@
     "eslint": "^8.53.0",
     "eslint-config-prettier": "^9.0.0",
     "express": "^5.1.0",
-    "glob": "^11.0.3",
+    "glob": "^11.1.0",
     "jest": "^29.7.0",
     "nock": "^14.0.5",
     "prettier": "^3.0.3",

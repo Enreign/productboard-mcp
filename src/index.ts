@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { config } from 'dotenv';
 import { ProductboardMCPServer } from '@core/server.js';
 import { ConfigManager } from '@utils/config.js';

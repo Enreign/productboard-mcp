@@ -1,158 +1,105 @@
-# Productboard MCP Server
+# productboard-mcp
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server for the [Productboard API v2](https://developer.productboard.com/v2.0.0/reference/introduction). Enables AI assistants like Claude to read and manage your Productboard workspace — features, products, notes, objectives, key results, and releases.
-
-> **Note:** Productboard API v2 is currently in Beta.
+An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server for the [Productboard](https://www.productboard.com) API. Enables AI assistants (Claude, Cursor, etc.) to interact with your Productboard workspace.
 
 ## Tools
 
-**21 tools** across 5 resource groups, all backed by the Productboard v2 unified `/entities` endpoint (`https://api.productboard.com/v2`).
-
-### Features (5)
 | Tool | Description |
 |------|-------------|
-| `pb_feature_list` | List features with optional filters (status, owner, tags, search) |
-| `pb_feature_get` | Get detailed information about a specific feature |
+| `pb_feature_list` | List features with filtering |
+| `pb_feature_get` | Get a feature by ID |
 | `pb_feature_create` | Create a new feature |
 | `pb_feature_update` | Update an existing feature |
-| `pb_feature_delete` | Delete or archive a feature |
-
-### Products (3)
-| Tool | Description |
-|------|-------------|
-| `pb_product_list` | List all products in the workspace |
-| `pb_product_create` | Create a new product or sub-product |
-| `pb_product_hierarchy` | Get the full product hierarchy tree |
-
-### Notes (2)
-| Tool | Description |
-|------|-------------|
-| `pb_note_list` | List customer feedback notes |
-| `pb_note_create` | Create a customer feedback note |
-
-### Objectives & Key Results (6)
-| Tool | Description |
-|------|-------------|
+| `pb_feature_delete` | Delete a feature |
+| `pb_product_list` | List products |
+| `pb_product_create` | Create a product |
+| `pb_product_hierarchy` | Get full product hierarchy |
+| `pb_note_list` | List customer notes |
+| `pb_note_create` | Create a customer note |
 | `pb_objective_list` | List objectives |
-| `pb_objective_create` | Create a new objective |
-| `pb_objective_update` | Update an existing objective |
+| `pb_objective_create` | Create an objective |
+| `pb_objective_update` | Update an objective |
 | `pb_keyresult_list` | List key results |
-| `pb_keyresult_create` | Create a key result for an objective |
-| `pb_keyresult_update` | Update an existing key result |
-
-### Releases (5)
-| Tool | Description |
-|------|-------------|
+| `pb_keyresult_create` | Create a key result |
+| `pb_keyresult_update` | Update a key result |
 | `pb_release_list` | List releases |
-| `pb_release_create` | Create a new release |
+| `pb_release_create` | Create a release |
 | `pb_release_update` | Update a release |
-| `pb_release_status_update` | Update release status and publish release notes |
-| `pb_release_timeline` | Get release timeline with features and milestones |
+| `pb_release_status_update` | Update release status |
+| `pb_release_timeline` | Get release timeline |
 
-## Quick Start
-
-### Prerequisites
-
-- Node.js 18+
-- Productboard API token (find it under **Settings → API Keys** in your Productboard workspace)
-- MCP-compatible client (Claude Desktop or Claude Code)
-
-### Installation
-
-```bash
-git clone https://github.com/Enreign/productboard-mcp.git
-cd productboard-mcp
-npm install
-npm run build
-```
+## Installation
 
 ### Claude Desktop
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+Add to your `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "productboard": {
-      "command": "node",
-      "args": ["/path/to/productboard-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "@enreign/productboard-mcp"],
       "env": {
-        "PRODUCTBOARD_API_TOKEN": "your-token-here"
+        "PRODUCTBOARD_API_TOKEN": "your-api-token-here"
       }
     }
   }
 }
 ```
 
-### Claude Code
-
-Add to `.mcp.json` in your project root (or run `claude mcp add`):
+### Cursor / Other MCP Clients
 
 ```json
 {
   "mcpServers": {
     "productboard": {
-      "command": "node",
-      "args": ["/path/to/productboard-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "@enreign/productboard-mcp"],
       "env": {
-        "PRODUCTBOARD_API_TOKEN": "your-token-here"
+        "PRODUCTBOARD_API_TOKEN": "your-api-token-here"
       }
     }
   }
 }
 ```
 
-## Environment Variables
+## Configuration
+
+### Required
+
+| Variable | Description |
+|----------|-------------|
+| `PRODUCTBOARD_API_TOKEN` | Your Productboard API token (Bearer auth) |
+
+### Optional
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PRODUCTBOARD_API_TOKEN` | — | **Required.** Bearer token from Productboard settings |
-| `PRODUCTBOARD_AUTH_TYPE` | `bearer` | Auth method: `bearer` or `oauth2` |
+| `PRODUCTBOARD_AUTH_TYPE` | `bearer` | Auth type: `bearer` or `oauth2` |
 | `PRODUCTBOARD_API_BASE_URL` | `https://api.productboard.com/v2` | API base URL |
-| `PRODUCTBOARD_API_TIMEOUT` | `10000` | Request timeout in ms |
-| `LOG_LEVEL` | `info` | Log level: `debug`, `info`, `warn`, `error` |
+| `PRODUCTBOARD_API_TIMEOUT` | `10000` | API request timeout (ms) |
+| `API_RETRY_ATTEMPTS` | `3` | Number of retry attempts |
+| `API_RETRY_DELAY` | `1000` | Delay between retries (ms) |
 | `RATE_LIMIT_GLOBAL` | `100` | Max requests per window |
-| `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window in ms |
+| `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window (ms) |
+| `CACHE_ENABLED` | `false` | Enable response caching |
+| `CACHE_TTL` | `300` | Cache TTL (seconds) |
+| `LOG_LEVEL` | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error`, `fatal` |
 
-OAuth2 variables (only needed if `PRODUCTBOARD_AUTH_TYPE=oauth2`):
+### OAuth2 (optional)
 
 | Variable | Description |
 |----------|-------------|
 | `PRODUCTBOARD_OAUTH_CLIENT_ID` | OAuth2 client ID |
 | `PRODUCTBOARD_OAUTH_CLIENT_SECRET` | OAuth2 client secret |
-| `PRODUCTBOARD_OAUTH_REDIRECT_URI` | Redirect URI (default: `http://localhost:3000/callback`) |
+| `PRODUCTBOARD_OAUTH_REDIRECT_URI` | OAuth2 redirect URI |
 
-## Development
+## Getting a Productboard API Token
 
-```bash
-npm run dev          # Start with hot reload
-npm run build        # Compile TypeScript
-npm test             # Run tests (280 tests)
-npm run test:watch   # Watch mode
-npm run lint         # ESLint
-npm run format       # Prettier
-```
-
-### Project Structure
-
-```
-src/
-├── core/           # MCP server and tool registry
-├── auth/           # Bearer token and OAuth2 authentication
-├── api/            # Productboard API v2 client
-├── tools/          # Tool implementations
-│   ├── features/
-│   ├── products/
-│   ├── notes/
-│   ├── objectives/
-│   └── releases/
-├── middleware/     # Rate limiting, validation
-└── utils/          # Logger, config
-
-tests/
-├── unit/           # Unit tests
-└── integration/    # Integration tests
-```
+1. Log in to your Productboard workspace
+2. Go to **Profile & Settings** → **API Access**
+3. Click **Generate API key** and copy the token
 
 ## License
 
