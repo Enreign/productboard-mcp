@@ -21,7 +21,6 @@ async function main(): Promise<void> {
     }
 
     const server = await ProductboardMCPServer.create(configuration);
-    await server.initialize();
 
     // Always bind to all interfaces so Railway (and other cloud platforms) can
     // route external traffic into the container.  PORT comes from the platform;
@@ -29,6 +28,13 @@ async function main(): Promise<void> {
     // (see config.ts) and can be overridden via MCP_SERVER_HOST.
     const port = parseInt(process.env.PORT || String(configuration.server.port), 10);
     await server.startHttp(port, configuration.server.host);
+
+    // Initialize in the background so the HTTP server (and /health endpoint) is
+    // available immediately.  Railway's healthcheck will pass as soon as the
+    // server binds to the port; auth/API validation happens concurrently.
+    server.initialize().catch((error: unknown) => {
+      logger.error('Initialization failed — server running in degraded mode', error);
+    });
 
     const shutdown = async (signal: string): Promise<void> => {
       logger.info(`Received ${signal}, shutting down gracefully...`);
