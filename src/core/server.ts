@@ -227,6 +227,19 @@ export class ProductboardMCPServer {
       const app = express();
       app.use(express.json());
 
+      // Root endpoint — quick orientation for anyone hitting the base URL
+      app.get('/', (_req, res) => {
+        res.json({
+          name: 'productboard-mcp',
+          version: pkg.version,
+          endpoints: {
+            health: 'GET /health',
+            mcp: 'POST /mcp  (StreamableHTTP, MCP protocol 2025-11-25)',
+            sse: 'GET /sse   (SSE, MCP protocol 2024-11-05)',
+          },
+        });
+      });
+
       // Health check endpoint for Railway and load balancers
       app.get('/health', (_req, res) => {
         res.json(this.getHealth());
