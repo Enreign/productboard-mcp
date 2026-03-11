@@ -227,6 +227,29 @@ export class ProductboardMCPServer {
       const app = express();
       app.use(express.json());
 
+      // CORS — required for Claude web UI (claude.ai) and other browser-based MCP clients
+      app.use((_req, res, next) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, mcp-session-id');
+        res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id');
+        next();
+      });
+      app.options('*', (_req, res) => { res.sendStatus(204); });
+
+      // Root endpoint — quick orientation for anyone hitting the base URL
+      app.get('/', (_req, res) => {
+        res.json({
+          name: 'productboard-mcp',
+          version: pkg.version,
+          endpoints: {
+            health: 'GET /health',
+            mcp: 'POST /mcp  (StreamableHTTP, MCP protocol 2025-11-25)',
+            sse: 'GET /sse   (SSE, MCP protocol 2024-11-05)',
+          },
+        });
+      });
+
       // Health check endpoint for Railway and load balancers
       app.get('/health', (_req, res) => {
         res.json(this.getHealth());
