@@ -227,6 +227,16 @@ export class ProductboardMCPServer {
       const app = express();
       app.use(express.json());
 
+      // CORS — required for Claude web UI (claude.ai) and other browser-based MCP clients
+      app.use((_req, res, next) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, mcp-session-id');
+        res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id');
+        next();
+      });
+      app.options('*', (_req, res) => { res.sendStatus(204); });
+
       // Root endpoint — quick orientation for anyone hitting the base URL
       app.get('/', (_req, res) => {
         res.json({
