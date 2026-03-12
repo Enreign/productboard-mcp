@@ -17,8 +17,17 @@ async function main(): Promise<void> {
     const server = await ProductboardMCPServer.create(configuration);
     const port = parseInt(process.env.PORT || String(configuration.server.port), 10);
 
-    // Start the HTTP server first so Railway's healthcheck passes immediately.
-    await server.startHttp(port, configuration.server.host);
+    // Run HTTP server startup and initialization concurrently.
+    // startHttp() binds the port immediately (Railway /health passes right away).
+    // initialize() validates auth, connects to the API, and registers tools in parallel.
+    // Promise.all resolves once both are settled, guaranteeing tools are ready before
+    // the first MCP client connects.
+    await Promise.all([
+      server.startHttp(port, configuration.server.host),
+      server.initialize().catch((error: unknown) => {
+        logger.error('Initialization failed — server running in degraded mode', error);
+      }),
+    ]);
 
     // Validate config after the port is bound so a missing token doesn't prevent
     // the healthcheck from ever succeeding.
@@ -26,11 +35,6 @@ async function main(): Promise<void> {
     if (!validation.valid) {
       logger.error('Configuration invalid — server running in degraded mode (no tools)', { errors: validation.errors });
     }
-
-    // Initialize (auth + tool registration) in the background; errors are non-fatal.
-    server.initialize().catch((error: unknown) => {
-      logger.error('Initialization failed — server running in degraded mode', error);
-    });
 
     const shutdown = async (signal: string): Promise<void> => {
       logger.info(`Received ${signal}, shutting down gracefully...`);
