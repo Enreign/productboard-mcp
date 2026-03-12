@@ -91,9 +91,5 @@ export function isRetryableError(error: unknown): boolean {
   if (error instanceof Error && error.message.includes('ETIMEDOUT')) {
     return true;
   }
-  // Conservative approach: retry unknown errors (but not known API errors)
-  if (error instanceof Error && !(error instanceof ProductboardAPIError)) {
-    return true;
-  }
   return false;
 }

@@ -81,6 +81,10 @@ export class SimpleOAuthProvider implements OAuthServerProvider {
   async verifyAccessToken(token: string): Promise<AuthInfo> {
     const info = this._tokens.get(token);
     if (!info) throw new Error('Invalid token');
+    if (info.expiresAt && info.expiresAt < Math.floor(Date.now() / 1000)) {
+      this._tokens.delete(token);
+      throw new Error('Token expired');
+    }
     return info;
   }
 }

@@ -88,15 +88,17 @@ export class RateLimiter {
   private refillBucket(bucket: TokenBucket): void {
     const now = Date.now();
     const timePassed = now - bucket.lastRefill;
-    
+
     if (timePassed >= bucket.windowMs) {
       bucket.tokens = bucket.limit;
       bucket.lastRefill = now;
     } else {
       const tokensToAdd = Math.floor((timePassed / bucket.windowMs) * bucket.limit);
-      bucket.tokens = Math.min(bucket.limit, bucket.tokens + tokensToAdd);
       if (tokensToAdd > 0) {
-        bucket.lastRefill = now;
+        bucket.tokens = Math.min(bucket.limit, bucket.tokens + tokensToAdd);
+        // Advance lastRefill only by the time consumed to generate these tokens,
+        // preserving the fractional remainder for the next refill cycle.
+        bucket.lastRefill += Math.floor(tokensToAdd * (bucket.windowMs / bucket.limit));
       }
     }
   }
