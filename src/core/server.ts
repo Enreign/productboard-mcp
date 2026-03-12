@@ -258,7 +258,7 @@ export class ProductboardMCPServer {
       // Modern StreamableHTTP transport endpoint (MCP protocol 2025-11-25).
       // A new MCP SDK Server + Transport is created per stateless request because the
       // SDK Server is single-use; shared state (metrics, tools, cache) lives on `this`.
-      app.post('/mcp', async (req, res) => {
+      app.all('/mcp', async (req, res) => {
         const mcpServer = this.buildMCPServer();
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
         try {
