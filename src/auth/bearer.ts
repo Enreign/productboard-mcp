@@ -18,11 +18,9 @@ export class BearerTokenAuth {
     }
 
     try {
-      const url = `${this.baseUrl}/entities?pageLimit=1`;
+      const url = `${this.baseUrl}/users/current`;
       this.logger.debug('Bearer token validation URL', { url });
       this.logger.debug('Headers', this.getHeaders(token));
-      
-      // Use /features endpoint for token validation (without parameters)
       const response = await axios.get(url, {
         headers: this.getHeaders(token),
         timeout: 5000,
