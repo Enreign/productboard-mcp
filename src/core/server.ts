@@ -235,7 +235,7 @@ export class ProductboardMCPServer {
         res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id');
         next();
       });
-      app.options('*', (_req, res) => { res.sendStatus(204); });
+      app.options('/{*path}', (_req, res) => { res.sendStatus(204); });
 
       // Root endpoint — quick orientation for anyone hitting the base URL
       app.get('/', (_req, res) => {
