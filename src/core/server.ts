@@ -35,6 +35,9 @@ import { ProductboardAPIClient } from '@api/index.js';
 import { RateLimiter, CacheModule } from '@middleware/index.js';
 import { Config, Logger } from '@utils/index.js';
 import { ServerError, ProtocolError, ToolExecutionError } from '@utils/errors.js';
+import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
+import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
+import { SimpleOAuthProvider } from './oauth.js';
 
 export interface ServerDependencies {
   config: Config;
@@ -224,6 +227,13 @@ export class ProductboardMCPServer {
     try {
       logger.info(`Starting Productboard MCP Server (HTTP) on ${host}:${port}...`);
 
+      const serverUrl = process.env.SERVER_URL ||
+        (process.env.RAILWAY_PUBLIC_DOMAIN
+          ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+          : `http://localhost:${port}`);
+      const issuerUrl = new URL(serverUrl);
+      const oauthProvider = new SimpleOAuthProvider();
+
       const app = express();
       app.use(express.json());
 
@@ -236,6 +246,13 @@ export class ProductboardMCPServer {
         next();
       });
       app.options('/{*path}', (_req, res) => { res.sendStatus(204); });
+
+      // OAuth 2.0 discovery + token endpoints (required by Claude.ai before every connection)
+      app.use(mcpAuthRouter({
+        provider: oauthProvider,
+        issuerUrl,
+        resourceName: 'Productboard MCP Server',
+      }));
 
       // Root endpoint — quick orientation for anyone hitting the base URL
       app.get('/', (_req, res) => {
@@ -255,10 +272,12 @@ export class ProductboardMCPServer {
         res.json(this.getHealth());
       });
 
+      const bearerAuth = requireBearerAuth({ verifier: oauthProvider });
+
       // Modern StreamableHTTP transport endpoint (MCP protocol 2025-11-25).
       // A new MCP SDK Server + Transport is created per stateless request because the
       // SDK Server is single-use; shared state (metrics, tools, cache) lives on `this`.
-      app.all('/mcp', async (req, res) => {
+      app.all('/mcp', bearerAuth, async (req, res) => {
         const mcpServer = this.buildMCPServer();
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
         try {
@@ -297,7 +316,7 @@ export class ProductboardMCPServer {
       }, 60 * 60 * 1000);
       sseCleanupInterval.unref();
 
-      app.get('/sse', async (_req, res) => {
+      app.get('/sse', bearerAuth, async (_req, res) => {
         const transport = new SSEServerTransport('/messages', res);
         const mcpServer = this.buildMCPServer();
         sseTransports[transport.sessionId] = { transport, createdAt: Date.now() };
@@ -321,7 +340,7 @@ export class ProductboardMCPServer {
           res.status(404).json({ error: 'Session not found' });
           return;
         }
-        await entry.transport.handlePostMessage(req, res);
+        await entry.transport.handlePostMessage(req, res, req.body);
       });
 
       await new Promise<void>((resolve, reject) => {
