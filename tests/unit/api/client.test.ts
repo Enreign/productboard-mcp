@@ -293,7 +293,7 @@ describe('ProductboardAPIClient', () => {
     it('should test connection successfully', async () => {
       nock(BASE_URL)
         .get('/entities')
-        .query({ type: 'feature' })
+        .query({ 'type[]': 'feature' })
         .reply(200, { data: [{ id: '1', type: 'feature' }] });
 
       const result = await client.testConnection();
@@ -303,7 +303,7 @@ describe('ProductboardAPIClient', () => {
     it('should handle connection test failure', async () => {
       nock(BASE_URL)
         .get('/entities')
-        .query({ type: 'feature' })
+        .query({ 'type[]': 'feature' })
         .reply(401, { message: 'Unauthorized' });
 
       const result = await client.testConnection();
@@ -314,10 +314,10 @@ describe('ProductboardAPIClient', () => {
       // Server errors are retryable, so we need to mock multiple attempts
       nock(BASE_URL)
         .get('/entities')
-        .query({ type: 'feature' })
+        .query({ 'type[]': 'feature' })
         .reply(500, { message: 'Server error' })
         .get('/entities')
-        .query({ type: 'feature' })
+        .query({ 'type[]': 'feature' })
         .reply(500, { message: 'Server error' });
 
       await expect(client.testConnection()).rejects.toThrow(APIServerError);

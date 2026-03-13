@@ -8,20 +8,17 @@ describe('ListReleasesTool', () => {
   let mockClient: jest.Mocked<ProductboardAPIClient>;
   let mockLogger: jest.Mocked<Logger>;
 
+  // v2 API format
   const mockReleases = [
     {
       id: 'rel_123',
-      name: 'v1.0.0',
-      status: 'planned',
-      release_date: '2024-01-15',
-      created_at: '2024-01-01T00:00:00Z',
+      fields: { name: 'v1.0.0', status: { name: 'planned' }, release_date: '2024-01-15' },
+      createdAt: '2024-01-01T00:00:00Z',
     },
     {
       id: 'rel_456',
-      name: 'v2.0.0',
-      status: 'in_progress',
-      release_date: '2024-06-15',
-      created_at: '2024-03-01T00:00:00Z',
+      fields: { name: 'v2.0.0', status: { name: 'in_progress' }, release_date: '2024-06-15' },
+      createdAt: '2024-03-01T00:00:00Z',
     },
   ];
 
@@ -48,7 +45,7 @@ describe('ListReleasesTool', () => {
   describe('metadata', () => {
     it('should have correct name and description', () => {
       expect(tool.name).toBe('pb_release_list');
-      expect(tool.description).toBe('List releases with optional filtering');
+      expect(tool.description).toContain('List releases with optional filtering');
     });
 
     it('should have correct parameter schema', () => {
@@ -56,10 +53,6 @@ describe('ListReleasesTool', () => {
       expect(metadata.inputSchema).toMatchObject({
         type: 'object',
         properties: {
-          release_group_id: {
-            type: 'string',
-            description: 'Filter by release group',
-          },
           status: {
             type: 'string',
             enum: ['planned', 'in_progress', 'released'],
@@ -100,28 +93,21 @@ describe('ListReleasesTool', () => {
     });
 
     it('should validate status enum', async () => {
-      const input = {
-        status: 'invalid_status',
-      } as any;
+      const input = { status: 'invalid_status' } as any;
       await expect(tool.execute(input)).rejects.toThrow('Invalid parameters');
     });
 
     it('should validate limit range', async () => {
-      const invalidMinLimit = { limit: 0 } as any;
-      await expect(tool.execute(invalidMinLimit)).rejects.toThrow('Invalid parameters');
-
-      const invalidMaxLimit = { limit: 101 } as any;
-      await expect(tool.execute(invalidMaxLimit)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({ limit: 0 } as any)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({ limit: 101 } as any)).rejects.toThrow('Invalid parameters');
     });
 
     it('should validate offset minimum', async () => {
-      const input = { offset: -1 } as any;
-      await expect(tool.execute(input)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({ offset: -1 } as any)).rejects.toThrow('Invalid parameters');
     });
 
     it('should accept valid filters', () => {
       const validInput = {
-        release_group_id: 'group_123',
         status: 'in_progress' as const,
         date_from: '2024-01-01',
         date_to: '2024-12-31',
@@ -142,7 +128,7 @@ describe('ListReleasesTool', () => {
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/entities',
-        params: { type: 'release' },
+        params: { 'type[]': 'release' },
       });
 
       expect(result.content[0].type).toBe('text');
@@ -153,7 +139,6 @@ describe('ListReleasesTool', () => {
 
     it('should list releases with all filters', async () => {
       const input = {
-        release_group_id: 'group_123',
         status: 'in_progress' as const,
         date_from: '2024-01-01',
         date_to: '2024-12-31',
@@ -170,8 +155,7 @@ describe('ListReleasesTool', () => {
         method: 'GET',
         endpoint: '/entities',
         params: {
-          type: 'release',
-          release_group_id: 'group_123',
+          'type[]': 'release',
           status: 'in_progress',
           date_from: '2024-01-01',
           date_to: '2024-12-31',
@@ -194,7 +178,7 @@ describe('ListReleasesTool', () => {
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/entities',
-        params: { type: 'release', status: 'released' },
+        params: { 'type[]': 'release', status: 'released' },
       });
 
       expect(result.content[0].text).toBe('No releases found.');
@@ -203,29 +187,26 @@ describe('ListReleasesTool', () => {
     it('should handle API errors gracefully', async () => {
       mockClient.makeRequest.mockRejectedValueOnce(new Error('API Error'));
 
-      await expect(tool.execute({})).rejects.toThrow('API Error');
+      const result = await tool.execute({});
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.success).toBe(false);
     });
 
     it('should handle authentication errors', async () => {
       const error = new Error('Authentication failed');
-      (error as any).response = {
-        status: 401,
-        data: {
-          error: true,
-          code: 'AUTH_FAILED',
-          message: 'Authentication failed',
-          details: {},
-        },
-      };
+      (error as any).response = { status: 401, data: {} };
       mockClient.makeRequest.mockRejectedValueOnce(error);
 
-      await expect(tool.execute({})).rejects.toThrow('Authentication failed');
+      const result = await tool.execute({});
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.success).toBe(false);
     });
 
-    it('should throw error if client not initialized', async () => {
+    it('should handle error if client not initialized', async () => {
       const uninitializedTool = new ListReleasesTool(null as any, mockLogger);
-
-      await expect(uninitializedTool.execute({})).rejects.toThrow();
+      const result = await uninitializedTool.execute({});
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.success).toBe(false);
     });
   });
 

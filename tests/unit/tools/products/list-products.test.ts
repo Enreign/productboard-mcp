@@ -55,17 +55,11 @@ describe('ListProductsTool', () => {
     const mockProducts = [
       {
         id: 'prod-1',
-        name: 'Product A',
-        description: 'Main product',
-        parent_id: null,
-        archived: false,
+        fields: { name: 'Product A', description: 'Main product' },
       },
       {
         id: 'prod-2',
-        name: 'Product B',
-        description: 'Another product',
-        parent_id: null,
-        archived: false,
+        fields: { name: 'Product B', description: 'Another product' },
       },
     ];
 
@@ -80,7 +74,7 @@ describe('ListProductsTool', () => {
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/entities',
-        params: { type: 'product' },
+        params: { 'type[]': 'product' },
       });
 
       expect(result.content[0].type).toBe('text');
@@ -95,9 +89,7 @@ describe('ListProductsTool', () => {
       const subProducts = [
         {
           id: 'sub-1',
-          name: 'Sub Product 1',
-          parent_id: 'prod-1',
-          archived: false,
+          fields: { name: 'Sub Product 1' },
         },
       ];
 
@@ -111,7 +103,7 @@ describe('ListProductsTool', () => {
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/entities',
-        params: { type: 'product', parent_id: 'prod-1' },
+        params: { 'type[]': 'product', parent_id: 'prod-1' },
       });
 
       expect(result.content[0].text).toContain('Sub Product 1');
@@ -129,7 +121,7 @@ describe('ListProductsTool', () => {
       expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/entities',
-        params: { type: 'product' },
+        params: { 'type[]': 'product' },
       });
 
       expect(result.content[0].text).toContain('Product A');
@@ -140,8 +132,7 @@ describe('ListProductsTool', () => {
         ...mockProducts,
         {
           id: 'prod-archived',
-          name: 'Archived Product',
-          archived: true,
+          fields: { name: 'Archived Product' },
         },
       ];
 
@@ -170,7 +161,9 @@ describe('ListProductsTool', () => {
     it('should handle API errors', async () => {
       mockApiClient.makeRequest.mockRejectedValue(new Error('API Error'));
 
-      await expect(tool.execute({})).rejects.toThrow('API Error');
+      const result = await tool.execute({});
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.success).toBe(false);
     });
   });
 });

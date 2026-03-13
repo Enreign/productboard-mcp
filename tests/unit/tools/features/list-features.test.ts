@@ -1,12 +1,29 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { ListFeaturesTool } from '@tools/features/list-features';
 import { ProductboardAPIClient } from '@api/client';
-import { mockFeatureData } from '../../../fixtures/features';
 
 describe('ListFeaturesTool', () => {
   let tool: ListFeaturesTool;
   let mockClient: jest.Mocked<ProductboardAPIClient>;
   let mockLogger: any;
+
+  // v2 API format: features are wrapped in fields
+  const mockFeatureDataV2 = {
+    data: [
+      {
+        id: 'feat_123456',
+        fields: { name: 'User Authentication Feature', description: 'Implement OAuth2', status: { name: 'in_progress' }, owner: { email: 'john@example.com' } },
+        createdAt: '2024-01-15T10:00:00Z',
+        updatedAt: '2024-01-20T14:30:00Z',
+      },
+      {
+        id: 'feat_234567',
+        fields: { name: 'Payment Integration', description: 'Integrate Stripe', status: { name: 'new' }, owner: { email: 'jane@example.com' } },
+        createdAt: '2024-01-16T11:00:00Z',
+        updatedAt: '2024-01-16T11:00:00Z',
+      },
+    ],
+  };
 
   beforeEach(() => {
     mockClient = {
@@ -106,12 +123,12 @@ describe('ListFeaturesTool', () => {
 
   describe('execute', () => {
     it('should list features with default parameters', async () => {
-      mockClient.get.mockResolvedValueOnce(mockFeatureData.listFeaturesResponse);
+      mockClient.get.mockResolvedValueOnce(mockFeatureDataV2);
 
       const result = await tool.execute({});
 
-      // v2 API: uses /entities with type=feature
-      expect(mockClient.get).toHaveBeenCalledWith('/entities', { type: 'feature' });
+      // v2 API: uses /entities with type[]=feature
+      expect(mockClient.get).toHaveBeenCalledWith('/entities', { 'type[]': 'feature' });
       // Result should be MCP content format
       expect(result).toHaveProperty('content');
       expect(result.content[0]).toHaveProperty('type', 'text');
@@ -127,12 +144,12 @@ describe('ListFeaturesTool', () => {
         search: 'authentication',
       };
 
-      mockClient.get.mockResolvedValueOnce(mockFeatureData.listFeaturesResponse);
+      mockClient.get.mockResolvedValueOnce(mockFeatureDataV2);
 
       await tool.execute(filters);
 
       expect(mockClient.get).toHaveBeenCalledWith('/entities', {
-          type: 'feature',
+          'type[]': 'feature',
           status: 'in_progress',
           product_id: 'prod_789',
           owner_email: 'john.doe@example.com',
@@ -142,15 +159,7 @@ describe('ListFeaturesTool', () => {
     });
 
     it('should handle empty results', async () => {
-      const emptyResponse = {
-        data: [],
-        pagination: {
-          total: 0,
-          offset: 0,
-          limit: 20,
-          has_more: false,
-        },
-      };
+      const emptyResponse = { data: [] };
 
       mockClient.get.mockResolvedValueOnce(emptyResponse);
 
@@ -161,30 +170,32 @@ describe('ListFeaturesTool', () => {
     it('should handle API errors gracefully', async () => {
       mockClient.get.mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(tool.execute({})).rejects.toThrow('Tool pb_feature_list execution failed');
+      const result = await tool.execute({});
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.success).toBe(false);
     });
 
     it('should handle rate limiting', async () => {
       const error = new Error('Rate limited');
-      (error as any).response = {
-        status: 429,
-        data: mockFeatureData.apiErrors.rateLimited,
-      };
+      (error as any).response = { status: 429, data: {} };
       mockClient.get.mockRejectedValueOnce(error);
 
-      await expect(tool.execute({})).rejects.toThrow('Tool pb_feature_list execution failed');
+      const result = await tool.execute({});
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.success).toBe(false);
     });
 
-    it('should throw error if client not initialized', async () => {
+    it('should handle error if client not initialized', async () => {
       const uninitializedTool = new ListFeaturesTool(null as any, mockLogger);
-      await expect(uninitializedTool.execute({}))
-        .rejects.toThrow('Tool pb_feature_list execution failed');
+      const result = await uninitializedTool.execute({});
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.success).toBe(false);
     });
   });
 
   describe('response transformation', () => {
     it('should return MCP content with feature names', async () => {
-      mockClient.get.mockResolvedValueOnce(mockFeatureData.listFeaturesResponse);
+      mockClient.get.mockResolvedValueOnce(mockFeatureDataV2);
 
       const result = await tool.execute({});
       const text = result.content[0].text;
@@ -195,8 +206,8 @@ describe('ListFeaturesTool', () => {
 
     it('should handle raw array response', async () => {
       const arrayResponse = [
-        { id: 'feat_1', name: 'Feature 1' },
-        { id: 'feat_2', name: 'Feature 2' },
+        { id: 'feat_1', fields: { name: 'Feature 1' } },
+        { id: 'feat_2', fields: { name: 'Feature 2' } },
       ];
 
       mockClient.get.mockResolvedValueOnce(arrayResponse);
@@ -212,7 +223,7 @@ describe('ListFeaturesTool', () => {
       const manyFeatures = {
         data: Array.from({ length: 5 }, (_, i) => ({
           id: `feat_${i}`,
-          name: `Feature ${i}`,
+          fields: { name: `Feature ${i}` },
         })),
       };
 

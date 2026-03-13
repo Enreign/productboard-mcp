@@ -76,15 +76,13 @@ describe('ListNotesTool', () => {
     const mockNotes = [
       {
         id: 'note-1',
-        content: 'First feedback',
-        customer_email: 'customer1@example.com',
-        created_at: '2025-01-15T00:00:00Z',
+        fields: { name: 'First feedback', content: '<p>First feedback</p>', owner: { email: 'customer1@example.com' }, tags: [] },
+        createdAt: '2025-01-15T00:00:00Z',
       },
       {
         id: 'note-2',
-        content: 'Second feedback',
-        customer_email: 'customer2@example.com',
-        created_at: '2025-01-14T00:00:00Z',
+        fields: { name: 'Second feedback', content: '<p>Second feedback</p>', owner: { email: 'customer2@example.com' }, tags: [] },
+        createdAt: '2025-01-14T00:00:00Z',
       },
     ];
 
@@ -251,7 +249,9 @@ describe('ListNotesTool', () => {
     it('should handle API errors', async () => {
       mockApiClient.makeRequest.mockRejectedValue(new Error('API Error'));
 
-      await expect(tool.execute({})).rejects.toThrow('Tool pb_note_list execution failed');
+      const result = await tool.execute({});
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.success).toBe(false);
     });
   });
 });

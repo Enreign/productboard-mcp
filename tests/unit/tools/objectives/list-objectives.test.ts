@@ -8,22 +8,17 @@ describe('ListObjectivesTool', () => {
   let mockClient: jest.Mocked<ProductboardAPIClient>;
   let mockLogger: jest.Mocked<Logger>;
 
+  // v2 API format with fields wrapper
   const mockObjectives = [
     {
       id: 'obj_123',
-      name: 'Increase User Engagement',
-      description: 'Improve user engagement metrics',
-      status: 'active',
-      period: 'quarter',
-      created_at: '2024-01-15T10:00:00Z',
+      fields: { name: 'Increase User Engagement', description: 'Improve engagement', status: { name: 'active' }, owner: { email: 'jane@example.com' } },
+      createdAt: '2024-01-15T10:00:00Z',
     },
     {
       id: 'obj_456',
-      name: 'Reduce Churn Rate',
-      description: 'Decrease monthly churn rate',
-      status: 'active',
-      period: 'quarter',
-      created_at: '2024-01-10T10:00:00Z',
+      fields: { name: 'Reduce Churn Rate', description: 'Decrease churn', status: { name: 'active' }, owner: { email: 'john@example.com' } },
+      createdAt: '2024-01-10T10:00:00Z',
     },
   ];
 
@@ -98,37 +93,24 @@ describe('ListObjectivesTool', () => {
     });
 
     it('should validate status enum', async () => {
-      const input = {
-        status: 'invalid_status',
-      } as any;
-      await expect(tool.execute(input)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({ status: 'invalid_status' } as any)).rejects.toThrow('Invalid parameters');
     });
 
     it('should validate period enum', async () => {
-      const input = {
-        period: 'invalid_period',
-      } as any;
-      await expect(tool.execute(input)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({ period: 'invalid_period' } as any)).rejects.toThrow('Invalid parameters');
     });
 
     it('should validate email format', async () => {
-      const input = {
-        owner_email: 'invalid-email',
-      } as any;
-      await expect(tool.execute(input)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({ owner_email: 'invalid-email' } as any)).rejects.toThrow('Invalid parameters');
     });
 
     it('should validate limit range', async () => {
-      const inputTooLow = { limit: 0 } as any;
-      await expect(tool.execute(inputTooLow)).rejects.toThrow('Invalid parameters');
-
-      const inputTooHigh = { limit: 101 } as any;
-      await expect(tool.execute(inputTooHigh)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({ limit: 0 } as any)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({ limit: 101 } as any)).rejects.toThrow('Invalid parameters');
     });
 
     it('should validate offset minimum', async () => {
-      const input = { offset: -1 } as any;
-      await expect(tool.execute(input)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({ offset: -1 } as any)).rejects.toThrow('Invalid parameters');
     });
 
     it('should accept valid input', () => {
@@ -153,7 +135,7 @@ describe('ListObjectivesTool', () => {
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/entities',
-        params: { type: 'objective' },
+        params: { 'type[]': 'objective' },
       });
 
       expect(result.content[0].type).toBe('text');
@@ -174,12 +156,11 @@ describe('ListObjectivesTool', () => {
 
       const result = await tool.execute(input);
 
-      // limit and offset are NOT sent to the API (client-side only)
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/entities',
         params: {
-          type: 'objective',
+          'type[]': 'objective',
           status: 'active',
           owner_email: 'jane.doe@example.com',
           period: 'quarter',
@@ -190,10 +171,7 @@ describe('ListObjectivesTool', () => {
     });
 
     it('should handle partial filters', async () => {
-      const input = {
-        status: 'completed' as const,
-        limit: 5,
-      };
+      const input = { status: 'completed' as const, limit: 5 };
 
       mockClient.makeRequest.mockResolvedValueOnce({ data: [] });
 
@@ -202,10 +180,7 @@ describe('ListObjectivesTool', () => {
       expect(mockClient.makeRequest).toHaveBeenCalledWith({
         method: 'GET',
         endpoint: '/entities',
-        params: {
-          type: 'objective',
-          status: 'completed',
-        },
+        params: { 'type[]': 'objective', status: 'completed' },
       });
 
       expect(result.content[0].text).toBe('No objectives found.');
@@ -213,45 +188,34 @@ describe('ListObjectivesTool', () => {
 
     it('should handle API errors gracefully', async () => {
       mockClient.makeRequest.mockRejectedValueOnce(new Error('API Error'));
-
-      await expect(tool.execute({})).rejects.toThrow('API Error');
+      const result = await tool.execute({});
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.success).toBe(false);
     });
 
     it('should handle authentication errors', async () => {
       const error = new Error('Authentication failed');
-      (error as any).response = {
-        status: 401,
-        data: {
-          error: true,
-          code: 'AUTH_FAILED',
-          message: 'Authentication failed',
-          details: {},
-        },
-      };
+      (error as any).response = { status: 401, data: {} };
       mockClient.makeRequest.mockRejectedValueOnce(error);
-
-      await expect(tool.execute({})).rejects.toThrow('Authentication failed');
+      const result = await tool.execute({});
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.success).toBe(false);
     });
 
     it('should handle forbidden errors', async () => {
       const error = new Error('Insufficient permissions');
-      (error as any).response = {
-        status: 403,
-        data: {
-          error: true,
-          code: 'FORBIDDEN',
-          message: 'Insufficient permissions',
-          details: {},
-        },
-      };
+      (error as any).response = { status: 403, data: {} };
       mockClient.makeRequest.mockRejectedValueOnce(error);
-
-      await expect(tool.execute({})).rejects.toThrow('Insufficient permissions');
+      const result = await tool.execute({});
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.success).toBe(false);
     });
 
-    it('should throw error if client not initialized', async () => {
+    it('should handle error if client not initialized', async () => {
       const uninitializedTool = new ListObjectivesTool(null as any, mockLogger);
-      await expect(uninitializedTool.execute({})).rejects.toThrow();
+      const result = await uninitializedTool.execute({});
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.success).toBe(false);
     });
   });
 
@@ -261,11 +225,8 @@ describe('ListObjectivesTool', () => {
         data: [
           {
             id: 'obj_123',
-            name: 'Test Objective',
-            description: 'Test Description',
-            status: 'active',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
+            fields: { name: 'Test Objective', description: 'Test Description', status: { name: 'active' } },
+            createdAt: '2024-01-01T00:00:00Z',
           },
         ],
       };
@@ -281,9 +242,7 @@ describe('ListObjectivesTool', () => {
 
     it('should handle empty results', async () => {
       mockClient.makeRequest.mockResolvedValueOnce({ data: [] });
-
       const result = await tool.execute({});
-
       expect(result.content[0].text).toBe('No objectives found.');
     });
   });

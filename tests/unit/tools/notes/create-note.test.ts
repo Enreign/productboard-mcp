@@ -192,7 +192,9 @@ describe('CreateNoteTool', () => {
         new Error('One or more features not found')
       );
 
-      await expect(tool.execute(paramsWithFeatures)).rejects.toThrow('One or more features not found');
+      const result = parseResult(await tool.execute(paramsWithFeatures));
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
     });
 
     it('should handle duplicate customer error gracefully', async () => {
