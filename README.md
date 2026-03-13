@@ -30,9 +30,48 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server for th
 
 ## Installation
 
-### Claude Desktop
+### Option 1: One-click install (.mcpb bundle) — Recommended
 
-Add to your `claude_desktop_config.json`:
+Download the latest `.mcpb` file from the [Releases](https://github.com/Enreign/productboard-mcp/releases) page and drag it into Claude Desktop (Developer → Extensions → Install), or double-click it in a compatible MCP client.
+
+The bundle is self-contained — no cloning or building required.
+
+After installing, set your `PRODUCTBOARD_API_TOKEN` in the extension settings.
+
+### Option 2: Local install (manual)
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/Enreign/productboard-mcp.git
+cd productboard-mcp
+
+# 2. Install dependencies and build
+npm install --include=dev
+npm run build
+```
+
+Then add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "productboard": {
+      "command": "node",
+      "args": ["/absolute/path/to/productboard-mcp/dist/index.js"],
+      "env": {
+        "PRODUCTBOARD_API_TOKEN": "your-api-token-here",
+        "LOG_LEVEL": "error"
+      }
+    }
+  }
+}
+```
+
+> **Important:** Set `LOG_LEVEL` to `error` (not `info`). MCP uses stdio for communication — info-level logs printed to stdout will interfere with the protocol and cause the server to lock up.
+
+### Option 3: npx
+
+> ⚠️ Coming soon — not yet published to npm. Use Option 1 or 2 above.
 
 ```json
 {
@@ -41,28 +80,19 @@ Add to your `claude_desktop_config.json`:
       "command": "npx",
       "args": ["-y", "@enreign/productboard-mcp"],
       "env": {
-        "PRODUCTBOARD_API_TOKEN": "your-api-token-here"
+        "PRODUCTBOARD_API_TOKEN": "your-api-token-here",
+        "LOG_LEVEL": "error"
       }
     }
   }
 }
 ```
 
-### Cursor / Other MCP Clients
+## Getting a Productboard API Token
 
-```json
-{
-  "mcpServers": {
-    "productboard": {
-      "command": "npx",
-      "args": ["-y", "@enreign/productboard-mcp"],
-      "env": {
-        "PRODUCTBOARD_API_TOKEN": "your-api-token-here"
-      }
-    }
-  }
-}
-```
+1. Log in to your Productboard workspace
+2. Go to **Profile & Settings** → **API Access**
+3. Click **Generate API key** and copy the token
 
 ## Configuration
 
@@ -87,6 +117,8 @@ Add to your `claude_desktop_config.json`:
 | `CACHE_TTL` | `300` | Cache TTL (seconds) |
 | `LOG_LEVEL` | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error`, `fatal` |
 
+> **Note for MCP clients:** Always set `LOG_LEVEL=error` when using with Claude Desktop, Cursor, or any stdio-based MCP client. Higher log levels write to stdout and will break the MCP protocol.
+
 ### OAuth2 (optional)
 
 | Variable | Description |
@@ -95,11 +127,16 @@ Add to your `claude_desktop_config.json`:
 | `PRODUCTBOARD_OAUTH_CLIENT_SECRET` | OAuth2 client secret |
 | `PRODUCTBOARD_OAUTH_REDIRECT_URI` | OAuth2 redirect URI |
 
-## Getting a Productboard API Token
+## Troubleshooting
 
-1. Log in to your Productboard workspace
-2. Go to **Profile & Settings** → **API Access**
-3. Click **Generate API key** and copy the token
+**"MCP server locks up / produces error logs"**
+→ Add `"LOG_LEVEL": "error"` to the `env` block in your MCP config. Info logs written to stdout interfere with the stdio transport.
+
+**"npx fails / package not found"**
+→ The package is not yet published to npm. Use the `.mcpb` bundle or local install above.
+
+**"command not found after local build"**
+→ Point `args` at the full absolute path to `dist/index.js`, not the `productboard-mcp.js` wrapper.
 
 ## License
 

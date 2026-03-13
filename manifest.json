@@ -1,0 +1,52 @@
+{
+  "name": "productboard-mcp",
+  "version": "0.2.1",
+  "description": "MCP server for the Productboard API. Enables AI assistants (Claude, Cursor, etc.) to interact with your Productboard workspace.",
+  "author": "Enreign",
+  "license": "MIT",
+  "repository": "https://github.com/Enreign/productboard-mcp",
+  "runtime": "node",
+  "entrypoint": "server/index.js",
+  "tools": [
+    { "name": "pb_feature_list", "description": "List features with filtering" },
+    { "name": "pb_feature_get", "description": "Get a feature by ID" },
+    { "name": "pb_feature_create", "description": "Create a new feature" },
+    { "name": "pb_feature_update", "description": "Update an existing feature" },
+    { "name": "pb_feature_delete", "description": "Delete a feature" },
+    { "name": "pb_product_list", "description": "List products" },
+    { "name": "pb_product_create", "description": "Create a product" },
+    { "name": "pb_product_hierarchy", "description": "Get full product hierarchy" },
+    { "name": "pb_note_list", "description": "List customer notes" },
+    { "name": "pb_note_create", "description": "Create a customer note" },
+    { "name": "pb_objective_list", "description": "List objectives" },
+    { "name": "pb_objective_create", "description": "Create an objective" },
+    { "name": "pb_objective_update", "description": "Update an objective" },
+    { "name": "pb_keyresult_list", "description": "List key results" },
+    { "name": "pb_keyresult_create", "description": "Create a key result" },
+    { "name": "pb_keyresult_update", "description": "Update a key result" },
+    { "name": "pb_release_list", "description": "List releases" },
+    { "name": "pb_release_create", "description": "Create a release" },
+    { "name": "pb_release_update", "description": "Update a release" },
+    { "name": "pb_release_status_update", "description": "Update release status" },
+    { "name": "pb_release_timeline", "description": "Get release timeline" }
+  ],
+  "configSchema": {
+    "PRODUCTBOARD_API_TOKEN": {
+      "type": "string",
+      "required": true,
+      "description": "Your Productboard API token. Get it from Profile & Settings → API Access in your Productboard workspace."
+    },
+    "PRODUCTBOARD_AUTH_TYPE": {
+      "type": "string",
+      "required": false,
+      "default": "bearer",
+      "description": "Auth type: bearer or oauth2"
+    },
+    "LOG_LEVEL": {
+      "type": "string",
+      "required": false,
+      "default": "error",
+      "description": "Log level: trace, debug, info, warn, error, fatal. Keep at error for MCP clients."
+    }
+  }
+}
