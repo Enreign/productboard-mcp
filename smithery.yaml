@@ -1,0 +1,23 @@
+name: productboard-mcp
+description: MCP server for the Productboard API. Enables AI assistants to interact with features, notes, objectives, releases, and products.
+version: 0.2.1
+runtime: node
+startCommand:
+  type: stdio
+  command: node
+  args: ["dist/index.js"]
+config:
+  PRODUCTBOARD_API_TOKEN:
+    type: string
+    required: true
+    description: "Your Productboard API token. Get it from Profile & Settings → API Access."
+  PRODUCTBOARD_AUTH_TYPE:
+    type: string
+    required: false
+    default: bearer
+    description: "Auth type: bearer or oauth2"
+  LOG_LEVEL:
+    type: string
+    required: false
+    default: error
+    description: "Log level. Keep at error for MCP clients."
