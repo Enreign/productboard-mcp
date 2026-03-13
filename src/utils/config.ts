@@ -80,8 +80,8 @@ export class ConfigManager {
       api: { baseUrl: 'https://api.productboard.com/v2', timeout: 10000, retryAttempts: 3, retryDelay: 1000 },
       rateLimit: { global: 100, windowMs: 60000 },
       cache: { enabled: false, ttl: 300, maxSize: 100 },
-      logLevel: 'info',
-      logPretty: true,
+      logLevel: 'error',
+      logPretty: false,
       nodeEnv: 'development',
     };
 
