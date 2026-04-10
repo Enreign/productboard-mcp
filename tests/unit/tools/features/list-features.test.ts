@@ -54,30 +54,38 @@ describe('ListFeaturesTool', () => {
       expect(metadata.inputSchema).toMatchObject({
         type: 'object',
         properties: {
-          status: {
+          name: {
             type: 'string',
-            enum: ['new', 'in_progress', 'validation', 'done', 'archived'],
+          },
+          status_name: {
+            type: 'string',
+          },
+          status_id: {
+            type: 'string',
+          },
+          owner_email: {
+            type: 'string',
+          },
+          owner_id: {
+            type: 'string',
+          },
+          parent_id: {
+            type: 'string',
+          },
+          archived: {
+            type: 'boolean',
+            default: false,
           },
           limit: {
             type: 'integer',
             minimum: 1,
-            maximum: 1000,
-            default: 20,
+            maximum: 5000,
+            default: 100,
           },
           offset: {
             type: 'integer',
             minimum: 0,
             default: 0,
-          },
-          sort: {
-            type: 'string',
-            enum: ['created_at', 'updated_at', 'name', 'priority'],
-            default: 'created_at',
-          },
-          order: {
-            type: 'string',
-            enum: ['asc', 'desc'],
-            default: 'desc',
           },
         },
       });
@@ -90,31 +98,15 @@ describe('ListFeaturesTool', () => {
       expect(validation.valid).toBe(true);
     });
 
-    it('should validate status enum', async () => {
-      await expect(tool.execute({ status: 'invalid' } as any)).rejects.toThrow('Invalid parameters');
-    });
-
-    it('should validate sort enum', async () => {
-      await expect(tool.execute({ sort: 'invalid_field' } as any)).rejects.toThrow('Invalid parameters');
-    });
-
-    it('should validate order enum', async () => {
-      await expect(tool.execute({ order: 'invalid_order' } as any)).rejects.toThrow('Invalid parameters');
-    });
-
-    it('should validate tags array', async () => {
-      await expect(tool.execute({ tags: 'not-an-array' } as any)).rejects.toThrow('Invalid parameters');
-    });
-
     it('should accept valid filter combinations', () => {
       const validation = tool.validateParams({
-        status: 'in_progress',
-        product_id: 'prod_123',
-        tags: ['tag1', 'tag2'],
+        name: 'Auth',
+        status_name: 'New idea',
+        owner_email: 'john@example.com',
+        parent_id: 'prod_123',
+        archived: false,
         limit: 50,
         offset: 20,
-        sort: 'priority',
-        order: 'asc',
       });
       expect(validation.valid).toBe(true);
     });
@@ -136,11 +128,11 @@ describe('ListFeaturesTool', () => {
 
     it('should apply filters correctly', async () => {
       const filters = {
-        status: 'in_progress' as const,
-        product_id: 'prod_789',
-        owner_email: 'john.doe@example.com',
-        tags: ['mobile', 'security'],
-        search: 'authentication',
+        name: 'Auth',
+        status_name: 'New idea',
+        owner_email: 'john@example.com',
+        parent_id: 'prod_789',
+        archived: false,
       };
 
       mockClient.getAllPages.mockResolvedValueOnce(mockFeatureDataV2);
@@ -148,12 +140,34 @@ describe('ListFeaturesTool', () => {
       await tool.execute(filters);
 
       expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', {
-          'type[]': 'feature',
-          status: 'in_progress',
-          product_id: 'prod_789',
-          owner_email: 'john.doe@example.com',
-          tags: 'mobile,security',
-          search: 'authentication',
+        'type[]': 'feature',
+        name: 'Auth',
+        'status[name]': 'New idea',
+        'owner[email]': 'john@example.com',
+        'parent[id]': 'prod_789',
+        archived: false,
+      });
+    });
+
+    it('should map status_id to status[id]', async () => {
+      mockClient.getAllPages.mockResolvedValueOnce(mockFeatureDataV2);
+
+      await tool.execute({ status_id: 'uuid-123' });
+
+      expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', {
+        'type[]': 'feature',
+        'status[id]': 'uuid-123',
+      });
+    });
+
+    it('should map owner_id to owner[id]', async () => {
+      mockClient.getAllPages.mockResolvedValueOnce(mockFeatureDataV2);
+
+      await tool.execute({ owner_id: 'uuid-456' });
+
+      expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', {
+        'type[]': 'feature',
+        'owner[id]': 'uuid-456',
       });
     });
 

@@ -4,16 +4,15 @@ import { Logger } from '@utils/logger.js';
 import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface ListFeaturesParams {
-  status?: 'new' | 'in_progress' | 'validation' | 'done' | 'archived';
-  product_id?: string;
-  component_id?: string;
+  name?: string;
+  status_name?: string;
+  status_id?: string;
   owner_email?: string;
-  tags?: string[];
-  search?: string;
+  owner_id?: string;
+  parent_id?: string;
+  archived?: boolean;
   limit?: number;
   offset?: number;
-  sort?: 'created_at' | 'updated_at' | 'name' | 'priority';
-  order?: 'asc' | 'desc';
 }
 
 export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
@@ -24,56 +23,47 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
       {
         type: 'object',
         properties: {
-          status: {
+          name: {
             type: 'string',
-            enum: ['new', 'in_progress', 'validation', 'done', 'archived'],
-            description: 'Filter by feature status',
+            description: 'Filter by feature name',
           },
-          product_id: {
+          status_name: {
             type: 'string',
-            description: 'Filter by product ID',
+            description: 'Filter by status name (e.g. "New idea", "With engineering")',
           },
-          component_id: {
+          status_id: {
             type: 'string',
-            description: 'Filter by component ID',
+            description: 'Filter by status UUID',
           },
           owner_email: {
             type: 'string',
             description: 'Filter by owner email',
           },
-          tags: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Filter by tags (features must have all specified tags)',
-          },
-          search: {
+          owner_id: {
             type: 'string',
-            description: 'Search in feature names and descriptions',
+            description: 'Filter by owner UUID',
+          },
+          parent_id: {
+            type: 'string',
+            description: 'Filter by parent entity UUID (e.g. product or component ID)',
+          },
+          archived: {
+            type: 'boolean',
+            default: false,
+            description: 'Include archived features (default false)',
           },
           limit: {
             type: 'integer',
             minimum: 1,
-            maximum: 1000,
-            default: 20,
-            description: 'Number of results per page',
+            maximum: 5000,
+            default: 100,
+            description: 'Maximum number of features to return',
           },
           offset: {
             type: 'integer',
             minimum: 0,
             default: 0,
-            description: 'Number of results to skip',
-          },
-          sort: {
-            type: 'string',
-            enum: ['created_at', 'updated_at', 'name', 'priority'],
-            default: 'created_at',
-            description: 'Sort field',
-          },
-          order: {
-            type: 'string',
-            enum: ['asc', 'desc'],
-            default: 'desc',
-            description: 'Sort order',
+            description: 'Number of features to skip',
           },
         },
       },
@@ -91,20 +81,18 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
     // Build query parameters for v2 /entities endpoint
     const queryParams: Record<string, any> = { 'type[]': 'feature' };
 
-    // Add supported parameters only
-    if (params.status) queryParams.status = params.status;
-    if (params.product_id) queryParams.product_id = params.product_id;
-    if (params.component_id) queryParams.component_id = params.component_id;
-    if (params.owner_email) queryParams.owner_email = params.owner_email;
-    if (params.search) queryParams.search = params.search;
-    if (params.tags && params.tags.length > 0) {
-      queryParams.tags = params.tags.join(',');
-    }
+    if (params.name) queryParams.name = params.name;
+    if (params.status_name) queryParams['status[name]'] = params.status_name;
+    if (params.status_id) queryParams['status[id]'] = params.status_id;
+    if (params.owner_email) queryParams['owner[email]'] = params.owner_email;
+    if (params.owner_id) queryParams['owner[id]'] = params.owner_id;
+    if (params.parent_id) queryParams['parent[id]'] = params.parent_id;
+    if (params.archived !== undefined) queryParams.archived = params.archived;
 
     const allFeatures = await this.apiClient.getAllPages<any>('/entities', queryParams);
 
     // Apply client-side pagination if requested
-    const requestedLimit = params.limit || 20;
+    const requestedLimit = params.limit || 100;
     const requestedOffset = params.offset || 0;
     const paginatedFeatures = allFeatures.slice(requestedOffset, requestedOffset + requestedLimit);
     
