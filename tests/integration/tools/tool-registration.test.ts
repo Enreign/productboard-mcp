@@ -148,7 +148,7 @@ describe('Tool Registration Integration', () => {
       expect(descriptors).toContainEqual(
         expect.objectContaining({
           name: 'pb_note_create',
-          description: 'Create a customer feedback note',
+          description: 'Create a customer feedback note with automatic customer/company lookup',
         })
       );
     });

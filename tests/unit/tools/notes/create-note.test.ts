@@ -23,6 +23,7 @@ describe('CreateNoteTool', () => {
       put: jest.fn(),
       patch: jest.fn(),
       delete: jest.fn(),
+      getAllPages: jest.fn(),
     } as any;
 
     mockLogger = {
@@ -38,7 +39,7 @@ describe('CreateNoteTool', () => {
   describe('constructor', () => {
     it('should initialize with correct name and description', () => {
       expect(tool.name).toBe('pb_note_create');
-      expect(tool.description).toBe('Create a customer feedback note');
+      expect(tool.description).toBe('Create a customer feedback note with automatic customer/company lookup');
     });
 
     it('should define correct parameters schema', () => {
@@ -46,172 +47,274 @@ describe('CreateNoteTool', () => {
         type: 'object',
         required: ['content'],
         properties: {
-          content: {
-            type: 'string',
-            description: 'Note content (customer feedback)',
-          },
-          title: {
-            type: 'string',
-            description: 'Note title/summary',
-          },
-          customer_email: {
-            type: 'string',
-            format: 'email',
-            description: 'Customer email address',
-          },
-          company_name: {
-            type: 'string',
-            description: 'Customer company name',
-          },
+          content: { type: 'string' },
+          title: { type: 'string' },
+          customer_email: { type: 'string', format: 'email' },
+          customer_name: { type: 'string' },
+          company_name: { type: 'string' },
+          feature_ids: { type: 'array', items: { type: 'string' } },
+          tags: { type: 'array', items: { type: 'string' } },
           source: {
-            type: 'string',
-            enum: ['email', 'call', 'meeting', 'survey', 'support', 'social'],
-            description: 'Feedback source',
+            type: 'object',
+            properties: {
+              origin: { type: 'string' },
+              record_id: { type: 'string' },
+              url: { type: 'string' },
+            },
           },
-          tags: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Tags for categorization',
-          },
-          feature_ids: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Feature IDs to link this note to',
-          },
+          create_if_missing: { type: 'boolean' },
         },
       });
     });
   });
 
   describe('execute', () => {
-    const validParams = {
-      content: 'Customer wants better search functionality',
-    };
-
-    const mockCreatedNote = {
-      id: 'note-123',
-      content: 'Customer wants better search functionality',
-      title: null,
-      customer_email: null,
-      company_name: null,
-      source: null,
-      tags: [],
-      created_at: '2025-01-15T00:00:00Z',
-    };
-
     it('should create a note with minimal parameters', async () => {
-      mockApiClient.post.mockResolvedValue(mockCreatedNote);
+      const mockResponse = { data: { id: 'note-1' } };
+      mockApiClient.post.mockResolvedValue(mockResponse);
 
-      const result = parseResult(await tool.execute(validParams));
+      const result = await tool.execute({ content: 'Some feedback' });
 
       expect(mockApiClient.post).toHaveBeenCalledWith('/notes', {
         data: {
-          type: 'simple',
+          type: 'textNote',
           fields: {
-            name: validParams.content.slice(0, 100),
-            content: `<p>${validParams.content}</p>`,
+            name: 'Some feedback',
+            content: '<p>Some feedback</p>',
           },
         },
       });
 
-      expect(result).toEqual({
-        success: true,
-        data: mockCreatedNote,
-      });
-
-      expect(mockLogger.info).toHaveBeenCalledWith('Creating note');
+      const text = result.content[0].text;
+      expect(text).toContain('Note created successfully');
     });
 
-    it('should create a note with all parameters', async () => {
-      const fullParams = {
-        content: 'Detailed customer feedback',
-        title: 'Search Enhancement Request',
-        customer_email: 'customer@example.com',
-        company_name: 'Acme Corp',
-        source: 'meeting' as const,
-        tags: ['search', 'enhancement'],
-        feature_ids: ['feat-1', 'feat-2'],
-      };
+    it('should use title as name when provided', async () => {
+      mockApiClient.post.mockResolvedValue({ data: { id: 'note-2' } });
 
-      const mockFullNote = {
-        ...mockCreatedNote,
-        ...fullParams,
-        id: 'note-456',
-      };
+      await tool.execute({ content: 'Feedback body', title: 'My Title' });
 
-      mockApiClient.post.mockResolvedValue(mockFullNote);
+      expect(mockApiClient.post).toHaveBeenCalledWith('/notes', expect.objectContaining({
+        data: expect.objectContaining({
+          fields: expect.objectContaining({ name: 'My Title' }),
+        }),
+      }));
+    });
 
-      const result = parseResult(await tool.execute(fullParams));
+    it('should preserve HTML content as-is', async () => {
+      mockApiClient.post.mockResolvedValue({ data: { id: 'note-3' } });
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/notes', {
-        data: {
-          type: 'simple',
-          fields: {
-            name: fullParams.title,
-            content: `<p>${fullParams.content}</p>`,
-          },
-        },
+      await tool.execute({ content: '<div>Already HTML</div>' });
+
+      expect(mockApiClient.post).toHaveBeenCalledWith('/notes', expect.objectContaining({
+        data: expect.objectContaining({
+          fields: expect.objectContaining({ content: '<div>Already HTML</div>' }),
+        }),
+      }));
+    });
+
+    it('should include tags as array of {name} objects', async () => {
+      mockApiClient.post.mockResolvedValue({ data: { id: 'note-4' } });
+
+      await tool.execute({ content: 'Feedback', tags: ['bug', 'ux'] });
+
+      expect(mockApiClient.post).toHaveBeenCalledWith('/notes', expect.objectContaining({
+        data: expect.objectContaining({
+          fields: expect.objectContaining({
+            tags: [{ name: 'bug' }, { name: 'ux' }],
+          }),
+        }),
+      }));
+    });
+
+    it('should include source metadata', async () => {
+      mockApiClient.post.mockResolvedValue({ data: { id: 'note-5' } });
+
+      await tool.execute({
+        content: 'Feedback',
+        source: { origin: 'zendesk', record_id: 'ZD-123', url: 'https://zendesk.com/t/123' },
       });
 
-      expect(result.data).toBeDefined();
+      expect(mockApiClient.post).toHaveBeenCalledWith('/notes', expect.objectContaining({
+        data: expect.objectContaining({
+          fields: expect.objectContaining({
+            source: { origin: 'zendesk', recordId: 'ZD-123', url: 'https://zendesk.com/t/123' },
+          }),
+        }),
+      }));
+    });
+
+    it('should include feature_ids as link relationships', async () => {
+      mockApiClient.post.mockResolvedValue({ data: { id: 'note-6' } });
+
+      await tool.execute({ content: 'Feedback', feature_ids: ['feat-1', 'feat-2'] });
+
+      expect(mockApiClient.post).toHaveBeenCalledWith('/notes', expect.objectContaining({
+        data: expect.objectContaining({
+          relationships: [
+            { type: 'link', target: { id: 'feat-1', type: 'link' } },
+            { type: 'link', target: { id: 'feat-2', type: 'link' } },
+          ],
+        }),
+      }));
     });
 
     it('should validate required content parameter', async () => {
-      const invalidParams = {
-        title: 'Title without content',
-      };
-
-      await expect(tool.execute(invalidParams as any)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({} as any)).rejects.toThrow('Invalid parameters');
     });
 
     it('should validate email format', async () => {
-      const invalidParams = {
-        content: 'Feedback',
-        customer_email: 'invalid-email',
-      };
-
-      await expect(tool.execute(invalidParams as any)).rejects.toThrow('Invalid parameters');
+      await expect(
+        tool.execute({ content: 'Feedback', customer_email: 'not-an-email' } as any)
+      ).rejects.toThrow('Invalid parameters');
     });
 
-    it('should validate source enum values', async () => {
-      const invalidParams = {
-        content: 'Feedback',
-        source: 'invalid-source',
-      };
+    it('should handle API errors', async () => {
+      mockApiClient.post.mockRejectedValue(new Error('API failure'));
 
-      await expect(tool.execute(invalidParams as any)).rejects.toThrow('Invalid parameters');
-    });
-
-    it('should handle feature linking errors', async () => {
-      const paramsWithFeatures = {
-        content: 'Feedback',
-        feature_ids: ['non-existent-feature'],
-      };
-
-      mockApiClient.post.mockRejectedValue(
-        new Error('One or more features not found')
-      );
-
-      const result = parseResult(await tool.execute(paramsWithFeatures));
+      const result = parseResult(await tool.execute({ content: 'Feedback' }));
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
     });
+  });
 
-    it('should handle duplicate customer error gracefully', async () => {
-      const paramsWithCustomer = {
-        content: 'Feedback',
-        customer_email: 'existing@example.com',
-        company_name: 'Existing Corp',
+  describe('customer lookup', () => {
+    it('should auto-link when email matches', async () => {
+      const mockUser = {
+        id: 'user-1',
+        fields: { email: 'wgao@acme.com', name: 'Wei Gao' },
+        relationships: {
+          data: [{ type: 'parent', target: { id: 'company-1', type: 'company' } }],
+        },
       };
 
-      mockApiClient.post.mockResolvedValue({
-        ...mockCreatedNote,
-        ...paramsWithCustomer,
+      mockApiClient.getAllPages.mockResolvedValueOnce([mockUser]); // email search
+      mockApiClient.post.mockResolvedValue({ data: { id: 'note-7' } });
+
+      const result = await tool.execute({
+        content: 'Feedback from Wei',
+        customer_email: 'wgao@acme.com',
       });
 
-      const result = parseResult(await tool.execute(paramsWithCustomer));
+      // Should search by email local part
+      expect(mockApiClient.getAllPages).toHaveBeenCalledWith('/entities', {
+        'type[]': 'user',
+        'name': 'wgao',
+      });
 
-      expect(result.success).toBe(true);
+      // Should include customer relationship
+      expect(mockApiClient.post).toHaveBeenCalledWith('/notes', expect.objectContaining({
+        data: expect.objectContaining({
+          relationships: expect.arrayContaining([
+            { type: 'customer', target: { id: 'user-1', type: 'user' } },
+          ]),
+        }),
+      }));
+
+      const text = result.content[0].text;
+      expect(text).toContain('Linked to customer');
+    });
+
+    it('should return prompt when not found and create_if_missing is false', async () => {
+      mockApiClient.getAllPages.mockResolvedValue([]); // no results
+
+      const result = await tool.execute({
+        content: 'Feedback',
+        customer_email: 'nobody@acme.com',
+      });
+
+      const text = result.content[0].text;
+      expect(text).toContain('No user found');
+      expect(text).toContain('create_if_missing');
+      expect(mockApiClient.post).not.toHaveBeenCalled();
+    });
+
+    it('should create user and company when create_if_missing is true', async () => {
+      // 1. Email search -> empty
+      mockApiClient.getAllPages.mockResolvedValueOnce([]);
+      // 2. Name search -> empty
+      mockApiClient.getAllPages.mockResolvedValueOnce([]);
+      // 3. Company search -> empty
+      mockApiClient.getAllPages.mockResolvedValueOnce([]);
+
+      // Create company
+      mockApiClient.post.mockResolvedValueOnce({ data: { id: 'company-new' } });
+      // Create user
+      mockApiClient.post.mockResolvedValueOnce({ data: { id: 'user-new' } });
+      // Create note
+      mockApiClient.post.mockResolvedValueOnce({ data: { id: 'note-8' } });
+
+      const result = await tool.execute({
+        content: 'First feedback',
+        customer_email: 'new@newcorp.com',
+        customer_name: 'New Person',
+        company_name: 'NewCorp',
+        create_if_missing: true,
+      });
+
+      // Should have created the company
+      expect(mockApiClient.post).toHaveBeenCalledWith('/entities', {
+        data: { type: 'company', fields: { name: 'NewCorp' } },
+      });
+
+      // Should have created the user linked to company
+      expect(mockApiClient.post).toHaveBeenCalledWith('/entities', {
+        data: {
+          type: 'user',
+          fields: { name: 'New Person', email: 'new@newcorp.com' },
+          relationships: [{ type: 'parent', target: { id: 'company-new', type: 'company' } }],
+        },
+      });
+
+      // Should have created the note linked to the user
+      expect(mockApiClient.post).toHaveBeenCalledWith('/notes', expect.objectContaining({
+        data: expect.objectContaining({
+          relationships: expect.arrayContaining([
+            { type: 'customer', target: { id: 'user-new', type: 'user' } },
+          ]),
+        }),
+      }));
+
+      const text = result.content[0].text;
+      expect(text).toContain('Note created successfully');
+    });
+
+    it('should reuse existing company when create_if_missing is true', async () => {
+      // 1. Email search -> empty
+      mockApiClient.getAllPages.mockResolvedValueOnce([]);
+      // 2. Name search -> empty
+      mockApiClient.getAllPages.mockResolvedValueOnce([]);
+      // 3. Company search -> found existing
+      mockApiClient.getAllPages.mockResolvedValueOnce([
+        { id: 'company-existing', fields: { name: 'ExistingCorp' } },
+      ]);
+
+      // Create user (no company creation needed)
+      mockApiClient.post.mockResolvedValueOnce({ data: { id: 'user-new2' } });
+      // Create note
+      mockApiClient.post.mockResolvedValueOnce({ data: { id: 'note-9' } });
+
+      await tool.execute({
+        content: 'Feedback',
+        customer_email: 'someone@existingcorp.com',
+        customer_name: 'Someone',
+        company_name: 'ExistingCorp',
+        create_if_missing: true,
+      });
+
+      // Should NOT have created a company
+      expect(mockApiClient.post).not.toHaveBeenCalledWith('/entities', expect.objectContaining({
+        data: expect.objectContaining({ type: 'company' }),
+      }));
+
+      // Should have created user linked to existing company
+      expect(mockApiClient.post).toHaveBeenCalledWith('/entities', {
+        data: {
+          type: 'user',
+          fields: { name: 'Someone', email: 'someone@existingcorp.com' },
+          relationships: [{ type: 'parent', target: { id: 'company-existing', type: 'company' } }],
+        },
+      });
     });
   });
 });
