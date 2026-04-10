@@ -48,13 +48,7 @@ export class ListProductsTool extends BaseTool<ListProductsParams> {
     const queryParams: Record<string, any> = { 'type[]': 'product' };
     if (params.parent_id) queryParams.parent_id = params.parent_id;
 
-    const response = await this.apiClient.makeRequest({
-      method: 'GET',
-      endpoint: '/entities',
-      params: queryParams,
-    });
-
-    const products: any[] = Array.isArray((response as any).data) ? (response as any).data : [];
+    const products: any[] = await this.apiClient.getAllPages<any>('/entities', queryParams);
 
     const stripHtml = (s: string) => s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 

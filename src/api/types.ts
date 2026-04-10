@@ -10,13 +10,13 @@ export interface PaginationParams {
 
 export interface PaginatedResponse<T> {
   data: T[];
-  pagination: {
-    total?: number;
-    limit: number;
-    offset?: number;
-    cursor?: string;
-    hasMore: boolean;
+  links?: {
+    next: string | null;
   };
+}
+
+export interface AllPagesOptions {
+  maxPages?: number;
 }
 
 export interface BatchOperation {

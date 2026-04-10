@@ -67,13 +67,7 @@ export class ListKeyResultsTool extends BaseTool<ListKeyResultsParams> {
         text: 'Key results are not available via the v2 API in this workspace. The "keyResult" entity type is not supported.',
       }],
     };
-    const response = await this.apiClient.makeRequest({
-      method: 'GET',
-      endpoint: '/entities',
-      params: queryParams,
-    });
-
-    const allKeyResults: any[] = Array.isArray((response as any)?.data) ? (response as any).data : [];
+    const allKeyResults: any[] = await this.apiClient.getAllPages<any>('/entities', queryParams);
     const limit = params.limit || 20;
     const offset = params.offset || 0;
     const keyResults = allKeyResults.slice(offset, offset + limit);

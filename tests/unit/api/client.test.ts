@@ -180,47 +180,44 @@ describe('ProductboardAPIClient', () => {
   });
 
   describe('Pagination Support', () => {
-    it('should handle cursor-based pagination', async () => {
+    it('should follow links.next for cursor-based pagination', async () => {
       const page1 = {
         data: [{ id: '1', name: 'Feature 1' }],
-        pagination: { hasMore: true, cursor: 'cursor1' }
+        links: { next: `${BASE_URL}/features?pageCursor=cursor1` },
       };
-      
+
       const page2 = {
         data: [{ id: '2', name: 'Feature 2' }],
-        pagination: { hasMore: false, cursor: null }
+        links: { next: null },
       };
 
       nock(BASE_URL)
         .get('/features')
-        .query({ limit: 1 })
         .reply(200, page1);
 
       nock(BASE_URL)
         .get('/features')
-        .query({ limit: 1, cursor: 'cursor1' })
+        .query({ pageCursor: 'cursor1' })
         .reply(200, page2);
 
-      const result = await client.getAllPages('/features', { limit: 1 });
+      const result = await client.getAllPages('/features');
 
       expect(result).toHaveLength(2);
       expect((result[0] as any).id).toBe('1');
       expect((result[1] as any).id).toBe('2');
     });
 
-    it('should handle offset-based pagination', async () => {
-      // Simplify the test to just test that it can handle a single page with offset
+    it('should stop when links.next is absent', async () => {
       const page1 = {
         data: [{ id: '1', name: 'Feature 1' }],
-        pagination: { hasMore: false, offset: 0 }
+        links: { next: null },
       };
 
       nock(BASE_URL)
         .get('/features')
-        .query({ limit: 1 })
         .reply(200, page1);
 
-      const result = await client.getAllPages('/features', { limit: 1 });
+      const result = await client.getAllPages('/features');
 
       expect(result).toHaveLength(1);
       expect((result[0] as any).id).toBe('1');

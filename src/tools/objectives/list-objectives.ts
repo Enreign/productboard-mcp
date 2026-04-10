@@ -68,13 +68,7 @@ export class ListObjectivesTool extends BaseTool<ListObjectivesParams> {
     if (params.owner_email) queryParams.owner_email = params.owner_email;
     if (params.period) queryParams.period = params.period;
 
-    const response = await this.apiClient.makeRequest({
-      method: 'GET',
-      endpoint: '/entities',
-      params: queryParams,
-    });
-
-    const allObjectives: any[] = Array.isArray((response as any)?.data) ? (response as any).data : [];
+    const allObjectives: any[] = await this.apiClient.getAllPages<any>('/entities', queryParams);
     const limit = params.limit || 20;
     const offset = params.offset || 0;
     const objectives = allObjectives.slice(offset, offset + limit);

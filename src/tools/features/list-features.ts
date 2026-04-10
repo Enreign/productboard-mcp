@@ -1,5 +1,5 @@
 import { BaseTool } from '../base.js';
-import { ProductboardAPIClient, extractResponseData } from '@api/client.js';
+import { ProductboardAPIClient } from '@api/client.js';
 import { Logger } from '@utils/logger.js';
 import { Permission, AccessLevel } from '@auth/permissions.js';
 
@@ -101,14 +101,12 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
       queryParams.tags = params.tags.join(',');
     }
 
-    const response = await this.apiClient.get('/entities', queryParams);
+    const allFeatures = await this.apiClient.getAllPages<any>('/entities', queryParams);
 
-    const features = extractResponseData(response);
-    
     // Apply client-side pagination if requested
     const requestedLimit = params.limit || 20;
     const requestedOffset = params.offset || 0;
-    const paginatedFeatures = features.slice(requestedOffset, requestedOffset + requestedLimit);
+    const paginatedFeatures = allFeatures.slice(requestedOffset, requestedOffset + requestedLimit);
     
     // Helper function to strip HTML tags
     const stripHtml = (html: string): string => {
@@ -135,7 +133,7 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
     
     // Create a text summary of the features
     const summary = formattedFeatures.length > 0
-      ? `Found ${features.length} features total, showing ${formattedFeatures.length} features:\n\n` +
+      ? `Found ${allFeatures.length} features total, showing ${formattedFeatures.length} features:\n\n` +
         formattedFeatures.map((f, i) =>
           `${i + 1}. ${f.name}\n` +
           `   ID: ${f.id}\n` +

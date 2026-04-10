@@ -10,6 +10,7 @@ describe('ListProductsTool', () => {
   beforeEach(() => {
     mockApiClient = {
       makeRequest: jest.fn(),
+      getAllPages: jest.fn(),
     } as any;
 
     mockLogger = {
@@ -64,18 +65,11 @@ describe('ListProductsTool', () => {
     ];
 
     it('should list all products successfully', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: mockProducts,
-        links: {},
-      });
+      mockApiClient.getAllPages.mockResolvedValue(mockProducts);
 
       const result = await tool.execute({});
 
-      expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/entities',
-        params: { 'type[]': 'product' },
-      });
+      expect(mockApiClient.getAllPages).toHaveBeenCalledWith('/entities', { 'type[]': 'product' });
 
       expect(result.content[0].type).toBe('text');
       expect(result.content[0].text).toContain('Found 2 products');
@@ -93,36 +87,22 @@ describe('ListProductsTool', () => {
         },
       ];
 
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: subProducts,
-        links: {},
-      });
+      mockApiClient.getAllPages.mockResolvedValue(subProducts);
 
       const result = await tool.execute({ parent_id: 'prod-1' });
 
-      expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/entities',
-        params: { 'type[]': 'product', parent_id: 'prod-1' },
-      });
+      expect(mockApiClient.getAllPages).toHaveBeenCalledWith('/entities', { 'type[]': 'product', parent_id: 'prod-1' });
 
       expect(result.content[0].text).toContain('Sub Product 1');
     });
 
     it('should include components when requested', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: mockProducts,
-        links: {},
-      });
+      mockApiClient.getAllPages.mockResolvedValue(mockProducts);
 
       const result = await tool.execute({ include_components: true });
 
       // include_components is not forwarded to API (not a supported param)
-      expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/entities',
-        params: { 'type[]': 'product' },
-      });
+      expect(mockApiClient.getAllPages).toHaveBeenCalledWith('/entities', { 'type[]': 'product' });
 
       expect(result.content[0].text).toContain('Product A');
     });
@@ -136,10 +116,7 @@ describe('ListProductsTool', () => {
         },
       ];
 
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: allProducts,
-        links: {},
-      });
+      mockApiClient.getAllPages.mockResolvedValue(allProducts);
 
       const result = await tool.execute({ include_archived: true });
 
@@ -148,10 +125,7 @@ describe('ListProductsTool', () => {
     });
 
     it('should handle empty results', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: [],
-        links: {},
-      });
+      mockApiClient.getAllPages.mockResolvedValue([]);
 
       const result = await tool.execute({});
 
@@ -159,7 +133,7 @@ describe('ListProductsTool', () => {
     });
 
     it('should handle API errors', async () => {
-      mockApiClient.makeRequest.mockRejectedValue(new Error('API Error'));
+      mockApiClient.getAllPages.mockRejectedValue(new Error('API Error'));
 
       const result = await tool.execute({});
       const parsed = JSON.parse(result.content[0].text);

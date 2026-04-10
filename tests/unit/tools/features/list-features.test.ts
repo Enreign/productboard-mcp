@@ -7,23 +7,21 @@ describe('ListFeaturesTool', () => {
   let mockClient: jest.Mocked<ProductboardAPIClient>;
   let mockLogger: any;
 
-  // v2 API format: features are wrapped in fields
-  const mockFeatureDataV2 = {
-    data: [
-      {
-        id: 'feat_123456',
-        fields: { name: 'User Authentication Feature', description: 'Implement OAuth2', status: { name: 'in_progress' }, owner: { email: 'john@example.com' } },
-        createdAt: '2024-01-15T10:00:00Z',
-        updatedAt: '2024-01-20T14:30:00Z',
-      },
-      {
-        id: 'feat_234567',
-        fields: { name: 'Payment Integration', description: 'Integrate Stripe', status: { name: 'new' }, owner: { email: 'jane@example.com' } },
-        createdAt: '2024-01-16T11:00:00Z',
-        updatedAt: '2024-01-16T11:00:00Z',
-      },
-    ],
-  };
+  // v2 API format: features are wrapped in fields (flat array from getAllPages)
+  const mockFeatureDataV2 = [
+    {
+      id: 'feat_123456',
+      fields: { name: 'User Authentication Feature', description: 'Implement OAuth2', status: { name: 'in_progress' }, owner: { email: 'john@example.com' } },
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-20T14:30:00Z',
+    },
+    {
+      id: 'feat_234567',
+      fields: { name: 'Payment Integration', description: 'Integrate Stripe', status: { name: 'new' }, owner: { email: 'jane@example.com' } },
+      createdAt: '2024-01-16T11:00:00Z',
+      updatedAt: '2024-01-16T11:00:00Z',
+    },
+  ];
 
   beforeEach(() => {
     mockClient = {
@@ -32,6 +30,7 @@ describe('ListFeaturesTool', () => {
       put: jest.fn(),
       delete: jest.fn(),
       patch: jest.fn(),
+      getAllPages: jest.fn(),
     } as unknown as jest.Mocked<ProductboardAPIClient>;
 
     mockLogger = {
@@ -123,12 +122,12 @@ describe('ListFeaturesTool', () => {
 
   describe('execute', () => {
     it('should list features with default parameters', async () => {
-      mockClient.get.mockResolvedValueOnce(mockFeatureDataV2);
+      mockClient.getAllPages.mockResolvedValueOnce(mockFeatureDataV2);
 
       const result = await tool.execute({});
 
       // v2 API: uses /entities with type[]=feature
-      expect(mockClient.get).toHaveBeenCalledWith('/entities', { 'type[]': 'feature' });
+      expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', { 'type[]': 'feature' });
       // Result should be MCP content format
       expect(result).toHaveProperty('content');
       expect(result.content[0]).toHaveProperty('type', 'text');
@@ -144,11 +143,11 @@ describe('ListFeaturesTool', () => {
         search: 'authentication',
       };
 
-      mockClient.get.mockResolvedValueOnce(mockFeatureDataV2);
+      mockClient.getAllPages.mockResolvedValueOnce(mockFeatureDataV2);
 
       await tool.execute(filters);
 
-      expect(mockClient.get).toHaveBeenCalledWith('/entities', {
+      expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', {
           'type[]': 'feature',
           status: 'in_progress',
           product_id: 'prod_789',
@@ -159,16 +158,14 @@ describe('ListFeaturesTool', () => {
     });
 
     it('should handle empty results', async () => {
-      const emptyResponse = { data: [] };
-
-      mockClient.get.mockResolvedValueOnce(emptyResponse);
+      mockClient.getAllPages.mockResolvedValueOnce([]);
 
       const result = await tool.execute({});
       expect(result.content[0].text).toBe('No features found.');
     });
 
     it('should handle API errors gracefully', async () => {
-      mockClient.get.mockRejectedValueOnce(new Error('Network error'));
+      mockClient.getAllPages.mockRejectedValueOnce(new Error('Network error'));
 
       const result = await tool.execute({});
       const parsed = JSON.parse(result.content[0].text);
@@ -178,7 +175,7 @@ describe('ListFeaturesTool', () => {
     it('should handle rate limiting', async () => {
       const error = new Error('Rate limited');
       (error as any).response = { status: 429, data: {} };
-      mockClient.get.mockRejectedValueOnce(error);
+      mockClient.getAllPages.mockRejectedValueOnce(error);
 
       const result = await tool.execute({});
       const parsed = JSON.parse(result.content[0].text);
@@ -195,7 +192,7 @@ describe('ListFeaturesTool', () => {
 
   describe('response transformation', () => {
     it('should return MCP content with feature names', async () => {
-      mockClient.get.mockResolvedValueOnce(mockFeatureDataV2);
+      mockClient.getAllPages.mockResolvedValueOnce(mockFeatureDataV2);
 
       const result = await tool.execute({});
       const text = result.content[0].text;
@@ -210,7 +207,7 @@ describe('ListFeaturesTool', () => {
         { id: 'feat_2', fields: { name: 'Feature 2' } },
       ];
 
-      mockClient.get.mockResolvedValueOnce(arrayResponse);
+      mockClient.getAllPages.mockResolvedValueOnce(arrayResponse);
 
       const result = await tool.execute({});
       const text = result.content[0].text;
@@ -220,14 +217,12 @@ describe('ListFeaturesTool', () => {
     });
 
     it('should apply client-side pagination', async () => {
-      const manyFeatures = {
-        data: Array.from({ length: 5 }, (_, i) => ({
-          id: `feat_${i}`,
-          fields: { name: `Feature ${i}` },
-        })),
-      };
+      const manyFeatures = Array.from({ length: 5 }, (_, i) => ({
+        id: `feat_${i}`,
+        fields: { name: `Feature ${i}` },
+      }));
 
-      mockClient.get.mockResolvedValueOnce(manyFeatures);
+      mockClient.getAllPages.mockResolvedValueOnce(manyFeatures);
 
       const result = await tool.execute({ limit: 2, offset: 1 });
       const text = result.content[0].text;

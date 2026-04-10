@@ -12,6 +12,7 @@ describe('ListNotesTool', () => {
   beforeEach(() => {
     mockApiClient = {
       makeRequest: jest.fn(),
+      getAllPages: jest.fn(),
     } as any;
 
     mockLogger = {
@@ -87,18 +88,11 @@ describe('ListNotesTool', () => {
     ];
 
     it('should list notes with default parameters', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: mockNotes,
-        links: { next: null },
-      });
+      mockApiClient.getAllPages.mockResolvedValue(mockNotes);
 
       const result = await tool.execute({});
 
-      expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/notes',
-        params: {},
-      });
+      expect(mockApiClient.getAllPages).toHaveBeenCalledWith('/notes', {});
 
       expect(result.content[0].type).toBe('text');
       expect(result.content[0].text).toContain('Found 2 notes');
@@ -111,112 +105,67 @@ describe('ListNotesTool', () => {
     it('should filter by feature_id', async () => {
       const featureNotes = [mockNotes[0]];
 
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: featureNotes,
-        links: {},
-      });
+      mockApiClient.getAllPages.mockResolvedValue(featureNotes);
 
       const result = await tool.execute({ feature_id: 'feat-123' });
 
-      expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/notes',
-        params: { feature_id: 'feat-123' },
-      });
+      expect(mockApiClient.getAllPages).toHaveBeenCalledWith('/notes', { feature_id: 'feat-123' });
 
       expect(result.content[0].text).toContain('Found 1 notes');
     });
 
     it('should filter by customer_email', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: [mockNotes[0]],
-        links: {},
-      });
+      mockApiClient.getAllPages.mockResolvedValue([mockNotes[0]]);
 
       await tool.execute({ customer_email: 'customer1@example.com' });
 
-      expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/notes',
-        params: { customer_email: 'customer1@example.com' },
-      });
+      expect(mockApiClient.getAllPages).toHaveBeenCalledWith('/notes', { customer_email: 'customer1@example.com' });
     });
 
     it('should filter by company_name', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: mockNotes,
-        links: {},
-      });
+      mockApiClient.getAllPages.mockResolvedValue(mockNotes);
 
       await tool.execute({ company_name: 'Acme Corp' });
 
-      expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/notes',
-        params: { company_name: 'Acme Corp' },
-      });
+      expect(mockApiClient.getAllPages).toHaveBeenCalledWith('/notes', { company_name: 'Acme Corp' });
     });
 
     it('should filter by tags', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: mockNotes,
-        links: {},
-      });
+      mockApiClient.getAllPages.mockResolvedValue(mockNotes);
 
       await tool.execute({ tags: ['important', 'feature-request'] });
 
-      expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/notes',
-        params: { tags: ['important', 'feature-request'] },
-      });
+      expect(mockApiClient.getAllPages).toHaveBeenCalledWith('/notes', { tags: ['important', 'feature-request'] });
     });
 
     it('should filter by date range', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: mockNotes,
-        links: {},
-      });
+      mockApiClient.getAllPages.mockResolvedValue(mockNotes);
 
       await tool.execute({
         date_from: '2025-01-01',
         date_to: '2025-01-31',
       });
 
-      expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/notes',
-        params: {
-          date_from: '2025-01-01',
-          date_to: '2025-01-31',
-        },
+      expect(mockApiClient.getAllPages).toHaveBeenCalledWith('/notes', {
+        date_from: '2025-01-01',
+        date_to: '2025-01-31',
       });
     });
 
     it('should respect custom limit', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: mockNotes,
-        links: {},
-      });
+      mockApiClient.getAllPages.mockResolvedValue(mockNotes);
 
       const result = await tool.execute({ limit: 1 });
 
       // limit is applied client-side, not sent to API
-      expect(mockApiClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/notes',
-        params: {},
-      });
+      expect(mockApiClient.getAllPages).toHaveBeenCalledWith('/notes', {});
 
       // Only 1 note returned due to client-side limit
       expect(result.content[0].text).toContain('showing 1');
     });
 
     it('should handle pagination', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: mockNotes,
-        links: { next: '/notes?offset=20' },
-      });
+      mockApiClient.getAllPages.mockResolvedValue(mockNotes);
 
       const result = await tool.execute({});
 
@@ -236,10 +185,7 @@ describe('ListNotesTool', () => {
     });
 
     it('should handle empty results', async () => {
-      mockApiClient.makeRequest.mockResolvedValue({
-        data: [],
-        links: {},
-      });
+      mockApiClient.getAllPages.mockResolvedValue([]);
 
       const result = await tool.execute({});
 
@@ -247,7 +193,7 @@ describe('ListNotesTool', () => {
     });
 
     it('should handle API errors', async () => {
-      mockApiClient.makeRequest.mockRejectedValue(new Error('API Error'));
+      mockApiClient.getAllPages.mockRejectedValue(new Error('API Error'));
 
       const result = await tool.execute({});
       const parsed = JSON.parse(result.content[0].text);

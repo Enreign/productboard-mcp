@@ -26,6 +26,7 @@ describe('Tool Registration Integration', () => {
       put: jest.fn(),
       patch: jest.fn(),
       delete: jest.fn(),
+      getAllPages: jest.fn(),
     } as any;
 
     mockLogger = {

@@ -68,13 +68,7 @@ export class ListReleasesTool extends BaseTool<ListReleasesParams> {
     if (params.date_from) queryParams.date_from = params.date_from;
     if (params.date_to) queryParams.date_to = params.date_to;
 
-    const response = await this.apiClient.makeRequest({
-      method: 'GET',
-      endpoint: '/entities',
-      params: queryParams,
-    });
-
-    const allReleases: any[] = Array.isArray((response as any)?.data) ? (response as any).data : [];
+    const allReleases: any[] = await this.apiClient.getAllPages<any>('/entities', queryParams);
     const limit = params.limit || 20;
     const offset = params.offset || 0;
     const releases = allReleases.slice(offset, offset + limit);

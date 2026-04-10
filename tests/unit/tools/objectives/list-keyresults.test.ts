@@ -16,6 +16,7 @@ describe('ListKeyResultsTool', () => {
       delete: jest.fn(),
       patch: jest.fn(),
       makeRequest: jest.fn(),
+      getAllPages: jest.fn(),
     } as unknown as jest.Mocked<ProductboardAPIClient>;
 
     mockLogger = {

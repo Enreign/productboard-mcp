@@ -30,6 +30,7 @@ describe('ListReleasesTool', () => {
       delete: jest.fn(),
       patch: jest.fn(),
       makeRequest: jest.fn(),
+      getAllPages: jest.fn(),
     } as unknown as jest.Mocked<ProductboardAPIClient>;
 
     mockLogger = {
@@ -121,15 +122,11 @@ describe('ListReleasesTool', () => {
 
   describe('execute', () => {
     it('should list releases without filters', async () => {
-      mockClient.makeRequest.mockResolvedValueOnce({ data: mockReleases });
+      mockClient.getAllPages.mockResolvedValueOnce(mockReleases);
 
       const result = await tool.execute({});
 
-      expect(mockClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/entities',
-        params: { 'type[]': 'release' },
-      });
+      expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', { 'type[]': 'release' });
 
       expect(result.content[0].type).toBe('text');
       expect(result.content[0].text).toContain('v1.0.0');
@@ -146,20 +143,16 @@ describe('ListReleasesTool', () => {
         offset: 0,
       };
 
-      mockClient.makeRequest.mockResolvedValueOnce({ data: [mockReleases[1]] });
+      mockClient.getAllPages.mockResolvedValueOnce([mockReleases[1]]);
 
       const result = await tool.execute(input);
 
       // limit and offset are NOT sent to the API (client-side only)
-      expect(mockClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/entities',
-        params: {
-          'type[]': 'release',
-          status: 'in_progress',
-          date_from: '2024-01-01',
-          date_to: '2024-12-31',
-        },
+      expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', {
+        'type[]': 'release',
+        status: 'in_progress',
+        date_from: '2024-01-01',
+        date_to: '2024-12-31',
       });
 
       expect(result.content[0].text).toContain('v2.0.0');
@@ -171,21 +164,17 @@ describe('ListReleasesTool', () => {
         limit: 10,
       };
 
-      mockClient.makeRequest.mockResolvedValueOnce({ data: [] });
+      mockClient.getAllPages.mockResolvedValueOnce([]);
 
       const result = await tool.execute(input);
 
-      expect(mockClient.makeRequest).toHaveBeenCalledWith({
-        method: 'GET',
-        endpoint: '/entities',
-        params: { 'type[]': 'release', status: 'released' },
-      });
+      expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', { 'type[]': 'release', status: 'released' });
 
       expect(result.content[0].text).toBe('No releases found.');
     });
 
     it('should handle API errors gracefully', async () => {
-      mockClient.makeRequest.mockRejectedValueOnce(new Error('API Error'));
+      mockClient.getAllPages.mockRejectedValueOnce(new Error('API Error'));
 
       const result = await tool.execute({});
       const parsed = JSON.parse(result.content[0].text);
@@ -195,7 +184,7 @@ describe('ListReleasesTool', () => {
     it('should handle authentication errors', async () => {
       const error = new Error('Authentication failed');
       (error as any).response = { status: 401, data: {} };
-      mockClient.makeRequest.mockRejectedValueOnce(error);
+      mockClient.getAllPages.mockRejectedValueOnce(error);
 
       const result = await tool.execute({});
       const parsed = JSON.parse(result.content[0].text);
@@ -212,7 +201,7 @@ describe('ListReleasesTool', () => {
 
   describe('response transformation', () => {
     it('should transform API response correctly', async () => {
-      mockClient.makeRequest.mockResolvedValueOnce({ data: mockReleases });
+      mockClient.getAllPages.mockResolvedValueOnce(mockReleases);
 
       const result = await tool.execute({});
 

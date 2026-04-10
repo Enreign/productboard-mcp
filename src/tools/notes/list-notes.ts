@@ -1,6 +1,5 @@
 import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '@api/index.js';
-import { extractResponseData } from '@api/client.js';
 import { Logger } from '@utils/logger.js';
 import { Permission, AccessLevel } from '@auth/permissions.js';
 
@@ -80,13 +79,7 @@ export class ListNotesTool extends BaseTool<ListNotesParams> {
     if (params.date_from) queryParams.date_from = params.date_from;
     if (params.date_to) queryParams.date_to = params.date_to;
 
-    const response = await this.apiClient.makeRequest({
-      method: 'GET',
-      endpoint: '/notes',
-      params: queryParams,
-    });
-
-    const allNotes = extractResponseData(response);
+    const allNotes = await this.apiClient.getAllPages<any>('/notes', queryParams);
     const limit = params.limit || 20;
     const notes = allNotes.slice(0, limit);
 

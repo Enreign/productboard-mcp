@@ -3,6 +3,7 @@ import {
   APIClientConfig,
   QueryParams,
   PaginatedResponse,
+  AllPagesOptions,
   BatchOperation,
   BatchResult,
   RequestConfig,
@@ -179,31 +180,29 @@ export class ProductboardAPIClient {
   async getAllPages<T>(
     endpoint: string,
     params?: QueryParams,
-    config?: RequestConfig,
+    options?: AllPagesOptions,
   ): Promise<T[]> {
+    const maxPages = options?.maxPages ?? 50;
     const allData: T[] = [];
-    let cursor: string | undefined;
-    let hasMore = true;
-    const limit = Number(params?.limit) || 100;
+    let pageCursor: string | undefined;
+    let page = 0;
 
-    while (hasMore) {
+    while (page < maxPages) {
       const paginatedParams: QueryParams = {
         ...params,
-        limit,
-        ...(cursor && { cursor }),
+        ...(pageCursor && { pageCursor }),
       };
 
-      const response = await this.get<PaginatedResponse<T>>(endpoint, paginatedParams, config);
+      const response = await this.get<PaginatedResponse<T>>(endpoint, paginatedParams);
       allData.push(...response.data);
+      page++;
 
-      hasMore = response.pagination.hasMore;
-      cursor = response.pagination.cursor;
+      const nextUrl = response.links?.next ?? null;
+      if (!nextUrl) break;
 
-      if (!cursor && hasMore) {
-        const pagination = response.pagination as Record<string, string | number | boolean | undefined>;
-        const currentOffset = typeof pagination.offset === 'number' ? pagination.offset : 0;
-        paginatedParams.offset = currentOffset + limit;
-      }
+      const parsed = new URL(nextUrl);
+      pageCursor = parsed.searchParams.get('pageCursor') ?? undefined;
+      if (!pageCursor) break;
     }
 
     return allData;
