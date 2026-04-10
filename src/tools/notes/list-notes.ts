@@ -4,12 +4,19 @@ import { Logger } from '@utils/logger.js';
 import { Permission, AccessLevel } from '@auth/permissions.js';
 
 interface ListNotesParams {
-  feature_id?: string;
-  customer_email?: string;
-  company_name?: string;
-  tags?: string[];
-  date_from?: string;
-  date_to?: string;
+  processed?: boolean;
+  archived?: boolean;
+  owner_email?: string;
+  owner_id?: string;
+  creator_email?: string;
+  creator_id?: string;
+  source_record_id?: string;
+  metadata_source_system?: string;
+  metadata_source_record_id?: string;
+  created_from?: string;
+  created_to?: string;
+  updated_from?: string;
+  updated_to?: string;
   limit?: number;
 }
 
@@ -21,38 +28,67 @@ export class ListNotesTool extends BaseTool<ListNotesParams> {
       {
         type: 'object',
         properties: {
-          feature_id: {
-            type: 'string',
-            description: 'Filter notes linked to a specific feature',
+          processed: {
+            type: 'boolean',
+            description: 'Filter by processed state',
           },
-          customer_email: {
-            type: 'string',
-            description: 'Filter by customer email',
+          archived: {
+            type: 'boolean',
+            description: 'Filter by archived state. Note: archived notes always return processed=false regardless of actual state',
           },
-          company_name: {
+          owner_email: {
             type: 'string',
-            description: 'Filter by company',
+            description: 'Filter by owner email address',
           },
-          tags: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Filter by tags',
-          },
-          date_from: {
+          owner_id: {
             type: 'string',
-            format: 'date',
-            description: 'Filter notes created after this date',
+            description: 'Filter by owner ID',
           },
-          date_to: {
+          creator_email: {
             type: 'string',
-            format: 'date',
-            description: 'Filter notes created before this date',
+            description: 'Filter by creator email address',
+          },
+          creator_id: {
+            type: 'string',
+            description: 'Filter by creator ID',
+          },
+          source_record_id: {
+            type: 'string',
+            description: 'Filter by source record ID',
+          },
+          metadata_source_system: {
+            type: 'string',
+            description: 'Filter by metadata source system',
+          },
+          metadata_source_record_id: {
+            type: 'string',
+            description: 'Filter by metadata source record ID',
+          },
+          created_from: {
+            type: 'string',
+            format: 'date-time',
+            description: 'Filter notes created from this date-time',
+          },
+          created_to: {
+            type: 'string',
+            format: 'date-time',
+            description: 'Filter notes created up to this date-time',
+          },
+          updated_from: {
+            type: 'string',
+            format: 'date-time',
+            description: 'Filter notes updated from this date-time',
+          },
+          updated_to: {
+            type: 'string',
+            format: 'date-time',
+            description: 'Filter notes updated up to this date-time',
           },
           limit: {
             type: 'integer',
             minimum: 1,
-            maximum: 100,
-            default: 20,
+            maximum: 5000,
+            default: 100,
           },
         },
       },
@@ -69,18 +105,24 @@ export class ListNotesTool extends BaseTool<ListNotesParams> {
   protected async executeInternal(params: ListNotesParams = {}): Promise<unknown> {
     this.logger.info('Listing notes');
 
-    // Only include filters supported by the Productboard API
     const queryParams: Record<string, any> = {};
 
-    if (params.feature_id) queryParams.feature_id = params.feature_id;
-    if (params.customer_email) queryParams.customer_email = params.customer_email;
-    if (params.company_name) queryParams.company_name = params.company_name;
-    if (params.tags) queryParams.tags = params.tags;
-    if (params.date_from) queryParams.date_from = params.date_from;
-    if (params.date_to) queryParams.date_to = params.date_to;
+    if (params.processed !== undefined) queryParams.processed = params.processed;
+    if (params.archived !== undefined) queryParams.archived = params.archived;
+    if (params.owner_email) queryParams['owner[email]'] = params.owner_email;
+    if (params.owner_id) queryParams['owner[id]'] = params.owner_id;
+    if (params.creator_email) queryParams['creator[email]'] = params.creator_email;
+    if (params.creator_id) queryParams['creator[id]'] = params.creator_id;
+    if (params.source_record_id) queryParams['source[recordId]'] = params.source_record_id;
+    if (params.metadata_source_system) queryParams['metadata[source][system]'] = params.metadata_source_system;
+    if (params.metadata_source_record_id) queryParams['metadata[source][recordId]'] = params.metadata_source_record_id;
+    if (params.created_from) queryParams.createdFrom = params.created_from;
+    if (params.created_to) queryParams.createdTo = params.created_to;
+    if (params.updated_from) queryParams.updatedFrom = params.updated_from;
+    if (params.updated_to) queryParams.updatedTo = params.updated_to;
 
     const allNotes = await this.apiClient.getAllPages<any>('/notes', queryParams);
-    const limit = params.limit || 20;
+    const limit = params.limit || 100;
     const notes = allNotes.slice(0, limit);
 
     const stripHtml = (s: string) => s
@@ -103,7 +145,7 @@ export class ListNotesTool extends BaseTool<ListNotesParams> {
         formattedNotes.map((n, i) =>
           `${i + 1}. ${n.title}\n` +
           `   Owner: ${n.owner}\n` +
-          `   Content: ${n.content.substring(0, 150)}${n.content.length > 150 ? '...' : ''}\n` +
+          `   Content: ${n.content}\n` +
           `   Tags: ${n.tags.length > 0 ? n.tags.join(', ') : 'None'}\n`
         ).join('\n')
       : 'No notes found.';
