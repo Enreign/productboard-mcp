@@ -119,7 +119,7 @@ describe('ListFeaturesTool', () => {
       const result = await tool.execute({});
 
       // v2 API: uses /entities with type[]=feature
-      expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', { 'type[]': 'feature' });
+      expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', { 'type[]': 'feature', archived: false });
       // Result should be MCP content format
       expect(result).toHaveProperty('content');
       expect(result.content[0]).toHaveProperty('type', 'text');
@@ -157,6 +157,7 @@ describe('ListFeaturesTool', () => {
       expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', {
         'type[]': 'feature',
         'status[id]': 'uuid-123',
+        archived: false,
       });
     });
 
@@ -168,6 +169,7 @@ describe('ListFeaturesTool', () => {
       expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', {
         'type[]': 'feature',
         'owner[id]': 'uuid-456',
+        archived: false,
       });
     });
 

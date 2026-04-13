@@ -87,7 +87,7 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
     if (params.owner_email) queryParams['owner[email]'] = params.owner_email;
     if (params.owner_id) queryParams['owner[id]'] = params.owner_id;
     if (params.parent_id) queryParams['parent[id]'] = params.parent_id;
-    if (params.archived !== undefined) queryParams.archived = params.archived;
+    queryParams.archived = params.archived ?? false;
 
     const allFeatures = await this.apiClient.getAllPages<any>('/entities', queryParams);
 
