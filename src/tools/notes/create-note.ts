@@ -231,7 +231,7 @@ export class CreateNoteTool extends BaseTool<CreateNoteParams> {
     });
 
     const emailMatch = byEmail.find((u: any) => {
-      const userEmail = u.fields?.email?.toLowerCase().replace(/dat$/, '');
+      const userEmail = u.fields?.email?.toLowerCase();
       return userEmail === email.toLowerCase();
     });
 
