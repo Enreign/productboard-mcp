@@ -12,3 +12,6 @@ export * from './objectives/index.js';
 
 // Release Management tools
 export * from './releases/index.js';
+
+// Customer tools
+export * from './customers/index.js';
