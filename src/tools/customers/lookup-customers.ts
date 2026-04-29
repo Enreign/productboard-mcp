@@ -13,13 +13,13 @@ export class LookupCustomersTool extends BaseTool<LookupCustomersParams> {
   constructor(apiClient: ProductboardAPIClient, logger: Logger) {
     super(
       'pb_customer_lookup',
-      'Search for customers (users and companies) by name. Substring matches against both user names and company names. For each matched company, also lists users belonging to it.',
+      'Search for customers (users and companies) by name. Use this to check whether a person or company already exists in Productboard before creating a note or new customer. The API does literal substring matching against user and company names — it does not normalize spaces, casing variations, or punctuation. If results look incomplete or wrong, try alternate phrasings (a shorter or more distinctive substring, removing spaces, dropping punctuation) before concluding the customer is missing. For each matched company, also lists users belonging to it.',
       {
         type: 'object',
         properties: {
           query: {
             type: 'string',
-            description: 'Search string. Matches as a substring against user names and company names.',
+            description: 'Search string. Matches as a literal substring against user and company names — case-insensitive but exact on whitespace and punctuation. "empty kitchen" will match "Empty Kitchens, Full Hearts" but not "Emptykitchens.co"; "empty" will match both.',
           },
           archived: {
             type: 'boolean',
