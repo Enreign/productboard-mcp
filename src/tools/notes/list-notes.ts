@@ -144,6 +144,7 @@ export class ListNotesTool extends BaseTool<ListNotesParams> {
       ? `Found ${allNotes.length} notes total, showing ${formattedNotes.length}:\n\n` +
         formattedNotes.map((n, i) =>
           `${i + 1}. ${n.title}\n` +
+          `   ID: ${n.id}\n` +
           `   Owner: ${n.owner}\n` +
           `   Content: ${n.content}\n` +
           `   Tags: ${n.tags.length > 0 ? n.tags.join(', ') : 'None'}\n`
