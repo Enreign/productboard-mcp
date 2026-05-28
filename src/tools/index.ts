@@ -15,3 +15,6 @@ export * from './releases/index.js';
 
 // Customer tools
 export * from './customers/index.js';
+
+// Jira integration tools
+export * from './jira/index.js';

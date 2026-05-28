@@ -24,7 +24,10 @@ const aliasToDir = {
 function getRelativePath(fromFile, toDir) {
   const fromDir = dirname(fromFile);
   const toPath = join(distDir, toDir);
-  const relativePath = relative(fromDir, toPath);
+  // Always use forward slashes in ESM import specifiers — on Windows,
+  // path.relative returns backslashes, which the JS parser then reads
+  // as escape sequences (e.g. "..\utils" → invalid \u escape).
+  const relativePath = relative(fromDir, toPath).split('\\').join('/');
   return relativePath.startsWith('.') ? relativePath : `./${relativePath}`;
 }
 
