@@ -41,5 +41,5 @@
     "templatesPath": "./prompts"
   },
   "logLevel": "info",
-  "logPretty": true
+  "logPretty": false
 }
