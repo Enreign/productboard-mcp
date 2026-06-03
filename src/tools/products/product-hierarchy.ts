@@ -102,8 +102,13 @@ export class ProductHierarchyTool extends BaseTool<ProductHierarchyParams> {
 
     const entities: any[] = fetched.flat();
 
-    // Build a node map. The parent of any entity is the relationship with type="parent".
+    // Build a node map. The parent of any entity is the relationship with
+    // type="parent" inside the embedded relationships.data, but that array
+    // is paginated. When an entity has many children listed first, its
+    // parent can fall onto a later page and won't appear here. We collect
+    // those entities and fall back to a targeted relationships fetch below.
     const nodeById = new Map<string, Node>();
+    const needsParentLookup: Node[] = [];
     for (const e of entities) {
       const parentRel = (e.relationships?.data ?? []).find(
         (r: any) => r.type === 'parent'
@@ -122,9 +127,40 @@ export class ProductHierarchyTool extends BaseTool<ProductHierarchyParams> {
         node.status = e.fields.status.name;
       }
       nodeById.set(node.id, node);
+      // Products genuinely have no parent; everything else should.
+      if (!node.parentId && node.type !== 'product') {
+        needsParentLookup.push(node);
+      }
     }
 
-    // Wire children to parents. Entities whose parent isn't in the map are orphans.
+    // Fallback: for every non-product node whose parent wasn't found in
+    // the first page of relationships, hit /entities/{id}/relationships?type=parent
+    // to confirm. This is targeted (only the suspected orphans) and
+    // parallel, so it stays fast even for hundreds of entities.
+    if (needsParentLookup.length > 0) {
+      const lookups = await Promise.all(
+        needsParentLookup.map(async (node) => {
+          try {
+            const res = await this.apiClient.get<any>(
+              `/entities/${node.id}/relationships`,
+              { type: 'parent' }
+            );
+            const items: any[] = (res as any)?.data ?? [];
+            const parentRel = items.find((r: any) => r.type === 'parent');
+            return { node, parentId: parentRel?.target?.id };
+          } catch {
+            return { node, parentId: undefined };
+          }
+        })
+      );
+      for (const { node, parentId } of lookups) {
+        if (parentId) node.parentId = parentId;
+      }
+    }
+
+    // Wire children to parents. Entities whose parent really isn't in the
+    // map after the fallback (deleted parents, parents of a different type
+    // not in our query) end up in the orphans list.
     const orphans: Node[] = [];
     for (const node of nodeById.values()) {
       if (node.parentId && nodeById.has(node.parentId)) {

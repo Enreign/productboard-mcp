@@ -186,6 +186,79 @@ describe('ProductHierarchyTool', () => {
       expect(text).toContain('Lost feature');
     });
 
+    it('falls back to /entities/{id}/relationships?type=parent when the embedded relationships are missing the parent', async () => {
+      // The PB API paginates relationships.data; an entity with many
+      // children listed first may not include its parent on page 1.
+      // Simulate that: this component has no parent in its embedded
+      // relationships, but the relationships endpoint returns the parent.
+      const orphanLooking = {
+        id: 'c-no-parent-in-data',
+        type: 'component',
+        fields: { name: 'UX issues in scheduling' },
+        relationships: { data: [] },
+      };
+
+      mockApiClient.getAllPages
+        .mockResolvedValueOnce([product('p1', 'Web App')])
+        .mockResolvedValueOnce([
+          component('c-parent', 'Scheduling orders to routes', 'p1'),
+          orphanLooking,
+        ])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      mockApiClient.get = jest.fn().mockResolvedValue({
+        data: [{ type: 'parent', target: { id: 'c-parent', type: 'component' } }],
+      });
+
+      const result: any = await tool.execute({});
+      const text = result.content[0].text;
+
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        '/entities/c-no-parent-in-data/relationships',
+        { type: 'parent' },
+      );
+      // Should be nested under Scheduling orders to routes, not in orphans
+      expect(text).toContain('Component: UX issues in scheduling');
+      expect(text).not.toContain('Orphans');
+    });
+
+    it('keeps an entity as orphan when both the embedded relationships and the fallback return no parent', async () => {
+      const trulyOrphan = {
+        id: 'really-orphan',
+        type: 'feature',
+        fields: { name: 'Genuinely lost' },
+        relationships: { data: [] },
+      };
+
+      mockApiClient.getAllPages
+        .mockResolvedValueOnce([product('p1', 'Routific')])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([trulyOrphan])
+        .mockResolvedValueOnce([]);
+
+      mockApiClient.get = jest.fn().mockResolvedValue({ data: [] });
+
+      const result: any = await tool.execute({});
+      const text = result.content[0].text;
+
+      expect(text).toContain('Orphans');
+      expect(text).toContain('Genuinely lost');
+    });
+
+    it('does not call the parent fallback for products', async () => {
+      mockApiClient.getAllPages
+        .mockResolvedValueOnce([product('p1', 'Routific')])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      mockApiClient.get = jest.fn();
+
+      await tool.execute({});
+      expect(mockApiClient.get).not.toHaveBeenCalled();
+    });
+
     it('starts from root_id when provided', async () => {
       mockApiClient.getAllPages
         .mockResolvedValueOnce([product('p1', 'Routific'), product('p2', 'Other product')])
