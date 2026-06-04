@@ -24,7 +24,7 @@ export class ListNotesTool extends BaseTool<ListNotesParams> {
   constructor(apiClient: ProductboardAPIClient, logger: Logger) {
     super(
       'pb_note_list',
-      'List customer feedback notes',
+      'List customer feedback notes, optionally filtered by note attributes (processed, archived, dates, owner, source). Returns the full result set across all pages — the count shown is the actual total. Each note in the output includes its UUID, content, owner, and creation timestamp; pass the UUID to pb_note_update when processing. This tool CANNOT filter by linked feature or linked customer. For "what insights are tagged to feature X" or "what has customer Y told us," use pb_note_search.',
       {
         type: 'object',
         properties: {

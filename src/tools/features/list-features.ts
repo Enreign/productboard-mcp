@@ -19,7 +19,7 @@ export class ListFeaturesTool extends BaseTool<ListFeaturesParams> {
   constructor(apiClient: ProductboardAPIClient, logger: Logger) {
     super(
       'pb_feature_list',
-      'List features with optional filtering and pagination',
+      'List features filtered by attributes (name, status, owner, parent, archived). Returns the full result set across all pages — the count shown is the actual total, not a first-page snapshot. Archived features are excluded by default. The `name` filter does literal substring matching (case-insensitive, exact on whitespace and punctuation), so it is good for narrow lookups but bad for discovery. To explore the product structure or find candidate features for a note, use pb_product_hierarchy instead — that returns the whole tree and lets you walk it rather than guess keywords.',
       {
         type: 'object',
         properties: {

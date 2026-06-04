@@ -23,7 +23,7 @@ export class CreateNoteTool extends BaseTool<CreateNoteParams> {
   constructor(apiClient: ProductboardAPIClient, logger: Logger) {
     super(
       'pb_note_create',
-      'Create a customer feedback note with automatic customer/company lookup',
+      'Create a new customer feedback note. Linking a note to one or more features is done by passing their UUIDs in `feature_ids` — this creates structural "link" relationships between the note and each feature. The `tags` field is unrelated to feature linking: tags are workspace-defined string labels (e.g. "beta", "churned") that must already exist in the workspace; passing feature names there will not link the note to a feature. Customer linking happens automatically when `customer_email` matches an existing user; set `create_if_missing: true` to create the user/company on the fly. Use this for new notes only — to add feature links or mark an existing note processed, use pb_note_update.',
       {
         type: 'object',
         required: ['content'],
