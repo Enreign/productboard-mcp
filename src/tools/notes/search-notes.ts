@@ -24,9 +24,6 @@ const stripHtml = (s: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
-const truncate = (s: string, max: number): string =>
-  s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s;
-
 export class SearchNotesTool extends BaseTool<SearchNotesParams> {
   constructor(apiClient: ProductboardAPIClient, logger: Logger) {
     super(
@@ -152,7 +149,7 @@ export class SearchNotesTool extends BaseTool<SearchNotesParams> {
       return {
         id: n.id,
         title,
-        content: truncate(rawContent, 400),
+        content: rawContent,
         owner: n.fields?.owner?.email ?? null,
         createdAt: n.createdAt,
         processed: n.fields?.processed ?? null,
