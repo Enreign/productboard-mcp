@@ -58,7 +58,7 @@ export class UpdateNoteTool extends BaseTool<UpdateNoteParams> {
           add_tags: {
             type: 'array',
             items: { type: 'string' },
-            description: 'Tag names to add to the note (additive — existing tags are preserved). Tags must already exist in the workspace. Useful for namespaced labels such as "importance:critical", "sentiment:frustrated", "theme:invoice-export-reliability".',
+            description: 'Tag names to add to the note (additive — existing tags are preserved). Useful for namespaced labels such as "importance:critical", "sentiment:frustrated", "theme:invoice-export-reliability".',
           },
           remove_tags: {
             type: 'array',
@@ -146,18 +146,24 @@ export class UpdateNoteTool extends BaseTool<UpdateNoteParams> {
       );
     }
 
-    // 2. Apply tag changes in their own PATCH using the additive
-    //    addItems/removeItems operations the note's `tags` field supports.
-    //    Kept separate from the scalar field PATCH so a tag failure never
-    //    flips `processed` on its own, and so existing tags are preserved.
+    // 2. Apply tag changes in their own PATCH using v2 JSON-patch operations.
+    //    The v2 API performs additive list edits through a `data.patch` array
+    //    of {op,path,value} operations — NOT via `data.fields.tags={addItems}`.
+    //    Kept separate from the scalar-field PATCH because v2 forbids sending
+    //    both `data.fields` and `data.patch` in the same request, and so a tag
+    //    failure never flips `processed` on its own.
     let tagsApplied = false;
     if (addTags.length > 0 || removeTags.length > 0) {
-      const tagOps: Record<string, unknown> = {};
-      if (addTags.length > 0) tagOps.addItems = addTags.map((name) => ({ name }));
-      if (removeTags.length > 0) tagOps.removeItems = removeTags.map((name) => ({ name }));
+      const patchOps: Array<Record<string, unknown>> = [];
+      if (addTags.length > 0) {
+        patchOps.push({ op: 'addItems', path: 'tags', value: addTags.map((name) => ({ name })) });
+      }
+      if (removeTags.length > 0) {
+        patchOps.push({ op: 'removeItems', path: 'tags', value: removeTags.map((name) => ({ name })) });
+      }
       try {
         await this.apiClient.patch(`/notes/${params.id}`, {
-          data: { type: 'textNote', fields: { tags: tagOps } },
+          data: { type: 'textNote', patch: patchOps },
         });
         tagsApplied = true;
         const parts: string[] = [];
