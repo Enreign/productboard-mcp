@@ -11,22 +11,20 @@ interface UnlinkNoteParams {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * EXPERIMENTAL: remove a note<->feature link.
+ * Remove a note<->feature link.
  *
- * The v2 relationship-delete contract is not yet confirmed. The link is
- * created via `POST /notes/{id}/relationships` with a target of the feature;
- * this tool attempts the symmetric `DELETE /notes/{id}/relationships/{featureId}`.
- * Note that update-note.ts historically claimed "the v2 API does not expose an
- * endpoint to remove note relationships" while src/api/endpoints.ts declares
- * `detachFromFeature: '/notes/:id/features/:featureId'`. Verify against a live
- * workspace and adjust the endpoint below if needed (it may instead require the
- * relationship's own id, discovered via a GET of the note's relationships).
+ * Links are created via `POST /notes/{id}/relationships` with
+ * `{data:{type:"link",target:{id:featureId}}}`. The Productboard v2 Entities API
+ * deletes a relationship at `DELETE /{id}/relationships/{type}/{targetId}` — the
+ * `{type}` path segment is required. So the correct route is
+ * `DELETE /notes/{id}/relationships/link/{featureId}`. (An earlier version
+ * omitted the type segment and returned 404.)
  */
 export class UnlinkNoteTool extends BaseTool<UnlinkNoteParams> {
   constructor(apiClient: ProductboardAPIClient, logger: Logger) {
     super(
       'pb_note_unlink',
-      'EXPERIMENTAL: remove a link between a note and a feature. Use when an insight was linked to the wrong feature. The exact v2 delete contract is unverified — confirm against your workspace before relying on it in automation.',
+      'Remove a link between a note and a feature. Use when an insight was linked to the wrong feature.',
       {
         type: 'object',
         required: ['id', 'feature_id'],
@@ -61,7 +59,7 @@ export class UnlinkNoteTool extends BaseTool<UnlinkNoteParams> {
 
     try {
       await this.apiClient.delete(
-        `/notes/${params.id}/relationships/${params.feature_id}`
+        `/notes/${params.id}/relationships/link/${params.feature_id}`
       );
       return {
         success: true,
@@ -73,8 +71,7 @@ export class UnlinkNoteTool extends BaseTool<UnlinkNoteParams> {
         success: false,
         error:
           `Failed to unlink feature ${params.feature_id} from note ${params.id}: ` +
-          `${err instanceof Error ? err.message : String(err)}. ` +
-          `The v2 relationship-delete endpoint is unverified — see the note in unlink-note.ts.`,
+          `${err instanceof Error ? err.message : String(err)}`,
       };
     }
   }
