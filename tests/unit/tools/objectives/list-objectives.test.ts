@@ -12,12 +12,22 @@ describe('ListObjectivesTool', () => {
   const mockObjectives = [
     {
       id: 'obj_123',
-      fields: { name: 'Increase User Engagement', description: 'Improve engagement', status: { name: 'active' }, owner: { email: 'jane@example.com' } },
+      fields: {
+        name: 'Increase User Engagement',
+        description: 'Improve engagement',
+        status: { name: 'active' },
+        owner: { email: 'jane@example.com' },
+      },
       createdAt: '2024-01-15T10:00:00Z',
     },
     {
       id: 'obj_456',
-      fields: { name: 'Reduce Churn Rate', description: 'Decrease churn', status: { name: 'active' }, owner: { email: 'john@example.com' } },
+      fields: {
+        name: 'Reduce Churn Rate',
+        description: 'Decrease churn',
+        status: { name: 'active' },
+        owner: { email: 'john@example.com' },
+      },
       createdAt: '2024-01-10T10:00:00Z',
     },
   ];
@@ -94,15 +104,21 @@ describe('ListObjectivesTool', () => {
     });
 
     it('should validate status enum', async () => {
-      await expect(tool.execute({ status: 'invalid_status' } as any)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({ status: 'invalid_status' } as any)).rejects.toThrow(
+        'Invalid parameters',
+      );
     });
 
     it('should validate period enum', async () => {
-      await expect(tool.execute({ period: 'invalid_period' } as any)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({ period: 'invalid_period' } as any)).rejects.toThrow(
+        'Invalid parameters',
+      );
     });
 
     it('should validate email format', async () => {
-      await expect(tool.execute({ owner_email: 'invalid-email' } as any)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({ owner_email: 'invalid-email' } as any)).rejects.toThrow(
+        'Invalid parameters',
+      );
     });
 
     it('should validate limit range', async () => {
@@ -170,7 +186,10 @@ describe('ListObjectivesTool', () => {
 
       const result = await tool.execute(input);
 
-      expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', { 'type[]': 'objective', status: 'completed' });
+      expect(mockClient.getAllPages).toHaveBeenCalledWith('/entities', {
+        'type[]': 'objective',
+        status: 'completed',
+      });
 
       expect(result.content[0].text).toBe('No objectives found.');
     });
@@ -213,7 +232,11 @@ describe('ListObjectivesTool', () => {
       const apiResponse = [
         {
           id: 'obj_123',
-          fields: { name: 'Test Objective', description: 'Test Description', status: { name: 'active' } },
+          fields: {
+            name: 'Test Objective',
+            description: 'Test Description',
+            status: { name: 'active' },
+          },
           createdAt: '2024-01-01T00:00:00Z',
         },
       ];
@@ -225,6 +248,24 @@ describe('ListObjectivesTool', () => {
       expect(result.content[0].type).toBe('text');
       expect(result.content[0].text).toContain('Test Objective');
       expect(result.content[0].text).toContain('Found 1 objectives');
+    });
+
+    it('should return full objective descriptions without truncating core context', async () => {
+      const longDescription = `<p>${'Detailed objective context. '.repeat(20)}</p>`;
+      mockClient.getAllPages.mockResolvedValueOnce([
+        {
+          id: 'obj_long',
+          fields: {
+            name: 'Context-heavy Objective',
+            description: longDescription,
+            status: { name: 'active' },
+          },
+        },
+      ]);
+
+      const result = await tool.execute({});
+
+      expect(result.content[0].text).toContain('Detailed objective context. '.repeat(20).trim());
     });
 
     it('should handle empty results', async () => {

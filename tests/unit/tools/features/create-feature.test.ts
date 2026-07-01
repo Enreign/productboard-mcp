@@ -6,7 +6,11 @@ import { Logger } from '@utils/logger';
 /** Parse the MCP content wrapper to get the underlying result */
 function parseResult(result: any): any {
   if (result?.content?.[0]?.text) {
-    try { return JSON.parse(result.content[0].text); } catch { return result.content[0].text; }
+    try {
+      return JSON.parse(result.content[0].text);
+    } catch {
+      return result.content[0].text;
+    }
   }
   return result;
 }
@@ -24,14 +28,14 @@ describe('CreateFeatureTool', () => {
       delete: jest.fn(),
       patch: jest.fn(),
     } as unknown as jest.Mocked<ProductboardAPIClient>;
-    
+
     mockLogger = {
       info: jest.fn(),
       debug: jest.fn(),
       error: jest.fn(),
       warn: jest.fn(),
     } as any;
-    
+
     tool = new CreateFeatureTool(mockClient, mockLogger);
   });
 
@@ -67,7 +71,9 @@ describe('CreateFeatureTool', () => {
     it('should validate required fields', async () => {
       await expect(tool.execute({} as any)).rejects.toThrow('Invalid parameters');
       await expect(tool.execute({ name: 'Test' } as any)).rejects.toThrow('Invalid parameters');
-      await expect(tool.execute({ description: 'Test' } as any)).rejects.toThrow('Invalid parameters');
+      await expect(tool.execute({ description: 'Test' } as any)).rejects.toThrow(
+        'Invalid parameters',
+      );
     });
 
     it('should validate email format', async () => {
@@ -84,6 +90,7 @@ describe('CreateFeatureTool', () => {
       const input = {
         name: 'Test Feature',
         description: 'Test description',
+        component_id: 'comp_456',
         status: 'invalid_status',
       } as any;
       mockClient.post.mockResolvedValueOnce({ id: 'feat_1', name: 'Test Feature' });
@@ -121,6 +128,16 @@ describe('CreateFeatureTool', () => {
       const validation = tool.validateParams(validInput);
       expect(validation.valid).toBe(true);
     });
+
+    it('should require a parent product or component', () => {
+      const validation = tool.validateParams({
+        name: 'User Authentication Feature',
+        description: 'Implement OAuth2 authentication for mobile app',
+      });
+
+      expect(validation.valid).toBe(false);
+      expect(validation.errors[0].message).toContain('Either product_id or component_id');
+    });
   });
 
   describe('execute', () => {
@@ -147,7 +164,7 @@ describe('CreateFeatureTool', () => {
         created_at: '2024-01-15T10:00:00Z',
         updated_at: '2024-01-20T14:30:00Z',
       };
-      
+
       mockClient.post.mockResolvedValueOnce(expectedResponse);
 
       const result = parseResult(await tool.execute(validInput));
@@ -158,7 +175,7 @@ describe('CreateFeatureTool', () => {
           fields: {
             name: validInput.name,
             description: `<p>${validInput.description}</p>`,
-            tags: validInput.tags,
+            tags: validInput.tags.map((name) => ({ name })),
             priority: validInput.priority,
             owner: { email: validInput.owner_email },
           },
@@ -175,6 +192,7 @@ describe('CreateFeatureTool', () => {
       const validInput = {
         name: 'User Authentication Feature',
         description: 'Implement OAuth2 authentication for mobile app',
+        component_id: 'comp_456',
       };
 
       mockClient.post.mockRejectedValueOnce(new Error('API Error'));
@@ -188,6 +206,7 @@ describe('CreateFeatureTool', () => {
       const validInput = {
         name: 'User Authentication Feature',
         description: 'Implement OAuth2 authentication for mobile app',
+        component_id: 'comp_456',
       };
 
       const error = new Error('Authentication failed');
@@ -203,6 +222,7 @@ describe('CreateFeatureTool', () => {
       const validInput = {
         name: 'User Authentication Feature',
         description: 'Implement OAuth2 authentication for mobile app',
+        component_id: 'comp_456',
       };
 
       const error = new Error('Validation error');
@@ -219,6 +239,7 @@ describe('CreateFeatureTool', () => {
       const validInput = {
         name: 'User Authentication Feature',
         description: 'Implement OAuth2 authentication for mobile app',
+        component_id: 'comp_456',
       };
 
       const result = parseResult(await uninitializedTool.execute(validInput));
@@ -229,6 +250,7 @@ describe('CreateFeatureTool', () => {
       const inputWithoutStatus = {
         name: 'User Authentication Feature',
         description: 'Implement OAuth2 authentication for mobile app',
+        component_id: 'comp_456',
       };
 
       const expectedResponse = {
@@ -251,6 +273,7 @@ describe('CreateFeatureTool', () => {
             name: inputWithoutStatus.name,
             description: `<p>${inputWithoutStatus.description}</p>`,
           },
+          relationships: [{ type: 'parent', target: { id: inputWithoutStatus.component_id } }],
         },
       });
     });
@@ -269,10 +292,13 @@ describe('CreateFeatureTool', () => {
 
       mockClient.post.mockResolvedValueOnce(apiResponse);
 
-      const result = parseResult(await tool.execute({
-        name: 'Test Feature',
-        description: 'Test Description',
-      }));
+      const result = parseResult(
+        await tool.execute({
+          name: 'Test Feature',
+          description: 'Test Description',
+          component_id: 'comp_456',
+        }),
+      );
 
       expect(result).toEqual({
         success: true,

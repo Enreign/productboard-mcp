@@ -11,6 +11,17 @@ interface ListObjectivesParams {
   offset?: number;
 }
 
+interface ObjectiveEntity {
+  fields?: {
+    name?: string;
+    description?: string;
+    status?: { name?: string } | string;
+    owner?: { email?: string };
+  };
+}
+
+type ObjectiveStatus = { name?: string } | string | undefined;
+
 export class ListObjectivesTool extends BaseTool<ListObjectivesParams> {
   constructor(apiClient: ProductboardAPIClient, logger: Logger) {
     super(
@@ -55,7 +66,7 @@ export class ListObjectivesTool extends BaseTool<ListObjectivesParams> {
         description: 'Requires read access to objectives',
       },
       apiClient,
-      logger
+      logger,
     );
   }
 
@@ -63,28 +74,43 @@ export class ListObjectivesTool extends BaseTool<ListObjectivesParams> {
     this.logger.info('Listing objectives');
 
     // Only pass filters supported by the API, not pagination params
-    const queryParams: Record<string, any> = { 'type[]': 'objective' };
+    const queryParams: Record<string, string> = { 'type[]': 'objective' };
     if (params.status) queryParams.status = params.status;
     if (params.owner_email) queryParams.owner_email = params.owner_email;
     if (params.period) queryParams.period = params.period;
 
-    const allObjectives: any[] = await this.apiClient.getAllPages<any>('/entities', queryParams);
-    const limit = params.limit || 20;
-    const offset = params.offset || 0;
+    const allObjectives = await this.apiClient.getAllPages<ObjectiveEntity>(
+      '/entities',
+      queryParams,
+    );
+    const limit = params.limit ?? 20;
+    const offset = params.offset ?? 0;
     const objectives = allObjectives.slice(offset, offset + limit);
 
-    const stripHtml = (s: string) => s.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    const stripHtml = (s: string): string =>
+      s
+        .replace(/<[^>]*>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-    const formatted = objectives.map((obj: any, i: number) =>
-      `${offset + i + 1}. ${obj.fields?.name || 'Untitled Objective'}\n` +
-      `   Status: ${obj.fields?.status?.name || (typeof obj.fields?.status === 'string' ? obj.fields.status : 'Unknown')}\n` +
-      `   Owner: ${obj.fields?.owner?.email || 'Unassigned'}\n` +
-      (obj.fields?.description ? `   Description: ${stripHtml(obj.fields.description).substring(0, 120)}\n` : '')
+    const getStatusName = (status: ObjectiveStatus): string => {
+      if (typeof status === 'string') return status;
+      return status?.name ?? 'Unknown';
+    };
+
+    const formatted = objectives.map(
+      (obj: ObjectiveEntity, i: number) =>
+        `${offset + i + 1}. ${obj.fields?.name ?? 'Untitled Objective'}\n` +
+        `   Status: ${getStatusName(obj.fields?.status)}\n` +
+        `   Owner: ${obj.fields?.owner?.email ?? 'Unassigned'}\n` +
+        (obj.fields?.description ? `   Description: ${stripHtml(obj.fields.description)}\n` : ''),
     );
 
-    const summary = objectives.length > 0
-      ? `Found ${allObjectives.length} objectives, showing ${objectives.length}:\n\n` + formatted.join('\n')
-      : 'No objectives found.';
+    const summary =
+      objectives.length > 0
+        ? `Found ${allObjectives.length} objectives, showing ${objectives.length}:\n\n` +
+          formatted.join('\n')
+        : 'No objectives found.';
 
     return { content: [{ type: 'text', text: summary }] };
   }
