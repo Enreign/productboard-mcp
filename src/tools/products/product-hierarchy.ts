@@ -8,6 +8,10 @@ interface ProductHierarchyParams {
   include_features?: boolean;
   include_descriptions?: boolean;
   root_id?: string;
+  /** Backwards-compatible alias for root_id used by the previous tool shape. */
+  product_id?: string;
+  /** Maximum child depth to render from the selected root(s). 0 renders only roots. */
+  depth?: number;
 }
 
 type EntityKind = 'product' | 'component' | 'feature' | 'subfeature';
@@ -69,6 +73,15 @@ export class ProductHierarchyTool extends BaseTool<ProductHierarchyParams> {
             type: 'string',
             description: 'Optional UUID of a node to use as the tree root. If omitted, the tree starts from all top-level products.',
           },
+          product_id: {
+            type: 'string',
+            description: 'Deprecated alias for root_id. Preserved for existing callers that pass product_id.',
+          },
+          depth: {
+            type: 'integer',
+            minimum: 0,
+            description: 'Maximum child depth to render from the selected root(s). 0 renders only roots. If omitted, renders the full subtree.',
+          },
         },
       },
       {
@@ -85,6 +98,8 @@ export class ProductHierarchyTool extends BaseTool<ProductHierarchyParams> {
     const archived = params.archived ?? false;
     const includeFeatures = params.include_features ?? true;
     const includeDescriptions = params.include_descriptions ?? false;
+    const rootId = params.root_id ?? params.product_id;
+    const maxDepth = params.depth ?? Number.POSITIVE_INFINITY;
 
     const types: EntityKind[] = includeFeatures
       ? ['product', 'component', 'feature', 'subfeature']
@@ -177,12 +192,12 @@ export class ProductHierarchyTool extends BaseTool<ProductHierarchyParams> {
 
     // Determine roots.
     let roots: Node[];
-    if (params.root_id) {
-      const root = nodeById.get(params.root_id);
+    if (rootId) {
+      const root = nodeById.get(rootId);
       if (!root) {
         return {
           success: false,
-          error: `No entity with id "${params.root_id}" found in the hierarchy.`,
+          error: `No entity with id "${rootId}" found in the hierarchy.`,
         };
       }
       roots = [root];
@@ -209,7 +224,9 @@ export class ProductHierarchyTool extends BaseTool<ProductHierarchyParams> {
       lines.push(
         `${indent}${TYPE_LABEL[node.type]}: ${node.name}${status} (id: ${node.id})${desc}`
       );
-      for (const child of node.children) render(child, depth + 1);
+      if (depth < maxDepth) {
+        for (const child of node.children) render(child, depth + 1);
+      }
     };
 
     for (const root of roots) render(root, 0);
@@ -221,9 +238,7 @@ export class ProductHierarchyTool extends BaseTool<ProductHierarchyParams> {
       );
       orphans.sort((a, b) => a.name.localeCompare(b.name));
       for (const o of orphans) {
-        lines.push(
-          `  ${TYPE_LABEL[o.type]}: ${o.name} (id: ${o.id}, parentId: ${o.parentId ?? 'none'})`
-        );
+        render(o, 1);
       }
     }
 

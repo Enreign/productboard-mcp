@@ -172,11 +172,14 @@ describe('ProductHierarchyTool', () => {
       );
     });
 
-    it('lists orphans separately', async () => {
+    it('lists orphans separately and renders their child subtrees', async () => {
       mockApiClient.getAllPages
         .mockResolvedValueOnce([product('p1', 'Routific')])
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([feature('f-orphan', 'Lost feature', 'missing-parent-id')])
+        .mockResolvedValueOnce([
+          feature('f-orphan', 'Lost feature', 'missing-parent-id'),
+          feature('f-child', 'Child of orphan', 'f-orphan'),
+        ])
         .mockResolvedValueOnce([]);
 
       const result: any = await tool.execute({});
@@ -184,6 +187,8 @@ describe('ProductHierarchyTool', () => {
 
       expect(text).toContain('Orphans');
       expect(text).toContain('Lost feature');
+      expect(text).toContain('    Feature: Child of orphan');
+      expect(text).toContain('features: 2');
     });
 
     it('falls back to /entities/{id}/relationships?type=parent when the embedded relationships are missing the parent', async () => {
@@ -273,6 +278,36 @@ describe('ProductHierarchyTool', () => {
       // Should not start from products
       expect(text).not.toContain('Product: Routific');
       expect(text).not.toContain('Product: Other product');
+    });
+
+    it('preserves product_id as a backwards-compatible alias for root_id', async () => {
+      mockApiClient.getAllPages
+        .mockResolvedValueOnce([product('p1', 'Routific'), product('p2', 'Other product')])
+        .mockResolvedValueOnce([component('c1', 'Routing', 'p1')])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      const result: any = await tool.execute({ product_id: 'p1' });
+      const text = result.content[0].text;
+
+      expect(text).toContain('Product: Routific');
+      expect(text).toContain('  Component: Routing');
+      expect(text).not.toContain('Product: Other product');
+    });
+
+    it('honors depth to limit rendered child levels', async () => {
+      mockApiClient.getAllPages
+        .mockResolvedValueOnce([product('p1', 'Routific')])
+        .mockResolvedValueOnce([component('c1', 'Routing', 'p1')])
+        .mockResolvedValueOnce([feature('f1', 'Pickup-delivery pairing', 'c1')])
+        .mockResolvedValueOnce([]);
+
+      const result: any = await tool.execute({ depth: 1 });
+      const text = result.content[0].text;
+
+      expect(text).toContain('Product: Routific');
+      expect(text).toContain('  Component: Routing');
+      expect(text).not.toContain('Feature: Pickup-delivery pairing');
     });
 
     it('returns error when root_id is not found', async () => {
