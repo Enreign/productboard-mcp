@@ -12,7 +12,7 @@ export class GetFeatureTool extends BaseTool<GetFeatureParams> {
   constructor(apiClient: ProductboardAPIClient, logger: Logger) {
     super(
       'pb_feature_get',
-      'Get the full details of a single feature by UUID: name, description, status, owner, parent component/product, and any custom fields. Use this when you have a candidate feature and want to read its full description before deciding it fits a note. To see what feedback is already linked to this feature, pair with pb_note_search using `feature_id` set to the same UUID — that is how you check whether existing insights describe a similar need to the one you are about to tag.',
+      'Get Productboard details for a single feature by UUID, including fields returned by the API such as name, description, status, owner, parent relationships, and requested includes. Use this when you have a candidate feature and want to read its description before deciding it fits a note. To inspect linked feedback, first use this feature UUID with a note-search workflow/tool when available, or list notes and inspect their link relationships.',
       {
         type: 'object',
         required: ['id'],
