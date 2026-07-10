@@ -7,6 +7,9 @@ export * from './products/index.js';
 // Note tools
 export * from './notes/index.js';
 
+// Tag tools
+export * from './tags/index.js';
+
 // Objectives & Key Results tools
 export * from './objectives/index.js';
 
