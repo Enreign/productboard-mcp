@@ -2,7 +2,7 @@
   "manifest_version": "0.1",
   "name": "productboard-mcp",
   "display_name": "Productboard",
-  "version": "0.3.0",
+  "version": "0.7.4",
   "description": "MCP server for the Productboard API. Enables AI assistants (Claude, Cursor, etc.) to interact with your Productboard workspace.",
   "author": {
     "name": "Enreign",
@@ -32,12 +32,18 @@
     { "name": "pb_feature_get", "description": "Get a feature by ID" },
     { "name": "pb_feature_create", "description": "Create a new feature" },
     { "name": "pb_feature_update", "description": "Update an existing feature" },
+    { "name": "pb_feature_health_update", "description": "Update a feature's health status, comment, and mode" },
+    { "name": "pb_feature_source_set", "description": "Set external-source provenance metadata (system, recordId, url) on a feature — works for Jira, Salesforce, Intercom, etc. NOT a functional Jira integration connection." },
     { "name": "pb_feature_delete", "description": "Delete a feature" },
     { "name": "pb_product_list", "description": "List products" },
     { "name": "pb_product_create", "description": "Create a product" },
     { "name": "pb_product_hierarchy", "description": "Get full product hierarchy" },
     { "name": "pb_note_list", "description": "List customer notes" },
     { "name": "pb_note_create", "description": "Create a customer note" },
+    { "name": "pb_note_update", "description": "Update a note: link features, add/remove tags (auto-creates missing tag options), mark processed" },
+    { "name": "pb_note_unlink", "description": "Remove a note ↔ feature link" },
+    { "name": "pb_tag_create", "description": "Create tag options (batch) so they can be attached to notes" },
+    { "name": "pb_tag_list", "description": "List existing tag options, optionally filtered by name prefix" },
     { "name": "pb_objective_list", "description": "List objectives" },
     { "name": "pb_objective_create", "description": "Create an objective" },
     { "name": "pb_objective_update", "description": "Update an objective" },
@@ -48,7 +54,9 @@
     { "name": "pb_release_create", "description": "Create a release" },
     { "name": "pb_release_update", "description": "Update a release" },
     { "name": "pb_release_status_update", "description": "Update release status" },
-    { "name": "pb_release_timeline", "description": "Get release timeline" }
+    { "name": "pb_release_timeline", "description": "Get release timeline" },
+    { "name": "pb_jira_integration_list", "description": "List Jira integrations configured in the workspace" },
+    { "name": "pb_jira_connection_list", "description": "List feature ↔ Jira issue connections for an integration (read-only — Productboard's API does not expose create/delete)" }
   ],
   "keywords": ["productboard", "mcp", "product-management"],
   "compatibility": {

@@ -1,6 +1,6 @@
 {
   "name": "@enreign/productboard-mcp",
-  "version": "0.3.0",
+  "version": "0.7.4",
   "description": "MCP server for Productboard API integration",
   "main": "dist/index.js",
   "bin": "./productboard-mcp.js",
@@ -17,6 +17,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc && node scripts/fix-imports.js && chmod +x dist/index.js",
+    "build:clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && npm run build",
+    "pack:mcpb": "npm run build:clean && npm prune --omit=dev && node scripts/pack-mcpb.js && npm install",
     "prepublishOnly": "npm run build",
     "dev": "tsx --watch src/index.ts",
     "start": "node dist/index.js",

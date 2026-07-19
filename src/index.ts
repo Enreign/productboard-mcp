@@ -2,7 +2,7 @@
 import { config } from 'dotenv';
 import { ProductboardMCPServer } from '@core/server.js';
 import { ConfigManager } from '@utils/config.js';
-import { Logger } from '@utils/logger.js';
+import { Logger, writeStderrSync } from '@utils/logger.js';
 
 // Load environment variables
 config();
@@ -55,6 +55,7 @@ async function main(): Promise<void> {
 
 // Run main function
 main().catch((error) => {
-  process.stderr.write(`Unhandled error: ${error}\n`);
+  const detail = error instanceof Error ? `${error.name}: ${error.message}\n${error.stack ?? ''}` : String(error);
+  writeStderrSync(`[FATAL] Unhandled error in main(): ${detail}`);
   process.exit(1);
 });
