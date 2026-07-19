@@ -46,7 +46,7 @@ describe('ListFeaturesTool', () => {
   describe('metadata', () => {
     it('should have correct name and description', () => {
       expect(tool.name).toBe('pb_feature_list');
-      expect(tool.description).toBe('List features with optional filtering and pagination');
+      expect(tool.description).toContain('List features');
     });
 
     it('should have correct parameter schema', () => {

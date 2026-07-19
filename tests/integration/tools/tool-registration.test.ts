@@ -136,7 +136,7 @@ describe('Tool Registration Integration', () => {
       expect(descriptors).toContainEqual(
         expect.objectContaining({
           name: 'pb_feature_get',
-          description: 'Get detailed information about a specific feature',
+          description: expect.stringContaining('details for a single feature'),
         })
       );
       expect(descriptors).toContainEqual(
@@ -148,7 +148,7 @@ describe('Tool Registration Integration', () => {
       expect(descriptors).toContainEqual(
         expect.objectContaining({
           name: 'pb_note_create',
-          description: 'Create a customer feedback note with automatic customer/company lookup',
+          description: expect.stringContaining('Create a new customer feedback note'),
         })
       );
     });

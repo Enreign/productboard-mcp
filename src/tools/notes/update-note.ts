@@ -19,7 +19,7 @@ export class UpdateNoteTool extends BaseTool<UpdateNoteParams> {
   constructor(apiClient: ProductboardAPIClient, logger: Logger) {
     super(
       'pb_note_update',
-      'Update an existing note: link it to features and/or mark it processed. Use this once you\'ve extracted insights from a note and identified which features it relates to.',
+      'Update an existing note: link it to one or more features (via `link_feature_ids`, which creates structural "link" relationships) and/or mark it processed. The order matters: linking happens first, and `processed` is only applied if every link succeeds, so a note never appears done while its feature linking is incomplete. This is unrelated to the `tags` field on pb_note_create — tags are workspace string labels, not feature pointers. Use this once you have identified which features a note should be linked to.',
       {
         type: 'object',
         required: ['id'],

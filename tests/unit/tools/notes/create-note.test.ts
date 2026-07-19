@@ -39,7 +39,7 @@ describe('CreateNoteTool', () => {
   describe('constructor', () => {
     it('should initialize with correct name and description', () => {
       expect(tool.name).toBe('pb_note_create');
-      expect(tool.description).toBe('Create a customer feedback note with automatic customer/company lookup');
+      expect(tool.description).toContain('Create a new customer feedback note');
     });
 
     it('should define correct parameters schema', () => {

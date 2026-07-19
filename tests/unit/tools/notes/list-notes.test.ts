@@ -28,7 +28,7 @@ describe('ListNotesTool', () => {
   describe('constructor', () => {
     it('should initialize with correct name and description', () => {
       expect(tool.name).toBe('pb_note_list');
-      expect(tool.description).toBe('List customer feedback notes');
+      expect(tool.description).toContain('List customer feedback notes');
     });
 
     it('should define correct parameters schema', () => {
