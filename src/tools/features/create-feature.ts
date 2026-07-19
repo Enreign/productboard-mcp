@@ -2,7 +2,12 @@ import { BaseTool } from '../base.js';
 import { ProductboardAPIClient } from '@api/client.js';
 import { Logger } from '@utils/logger.js';
 import { Permission, AccessLevel } from '@auth/permissions.js';
+import { ValidationResult } from '../../middleware/types.js';
 import { FeaturePayload } from './types.js';
+
+interface ProductboardResponseEnvelope {
+  data?: unknown;
+}
 
 export class CreateFeatureTool extends BaseTool<FeaturePayload> {
   constructor(apiClient: ProductboardAPIClient, logger: Logger) {
@@ -53,18 +58,44 @@ export class CreateFeatureTool extends BaseTool<FeaturePayload> {
         description: 'Requires write access to create features',
       },
       apiClient,
-      logger
+      logger,
     );
+  }
+
+  validateParams(params: unknown): ValidationResult {
+    const baseValidation = super.validateParams(params);
+    if (!baseValidation.valid) {
+      return baseValidation;
+    }
+
+    const featureParams = params as FeaturePayload;
+    if (!featureParams.product_id && !featureParams.component_id) {
+      return {
+        valid: false,
+        errors: [
+          {
+            path: 'product_id',
+            message:
+              'Either product_id or component_id must be provided as the parent entity for a feature',
+            value: undefined,
+          },
+        ],
+      };
+    }
+
+    return { valid: true, errors: [] };
   }
 
   protected async executeInternal(params: FeaturePayload): Promise<unknown> {
     const { owner_email, product_id, component_id, ...rest } = params;
 
-    const toHtml = (text: string) => text.startsWith('<') ? text : `<p>${text}</p>`;
+    const toHtml = (text: string): string => (text.startsWith('<') ? text : `<p>${text}</p>`);
 
     const fields: Record<string, unknown> = { ...rest };
     if (fields.description) fields.description = toHtml(fields.description as string);
     if (owner_email) fields.owner = { email: owner_email };
+    if (Array.isArray(fields.tags))
+      fields.tags = (fields.tags as string[]).map((name) => ({ name }));
 
     const relationships: Array<{ type: string; target: { id: string } }> = [];
     if (component_id) relationships.push({ type: 'parent', target: { id: component_id } });
@@ -75,9 +106,11 @@ export class CreateFeatureTool extends BaseTool<FeaturePayload> {
 
     const response = await this.apiClient.post('/entities', { data: requestData });
 
+    const responseEnvelope = response as ProductboardResponseEnvelope;
+
     return {
       success: true,
-      data: (response as any).data || response,
+      data: responseEnvelope.data ?? response,
     };
   }
 }
