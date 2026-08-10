@@ -1,0 +1,45 @@
+# Source — runtime ships compiled dist/ only
+src/
+tests/
+scripts/
+
+# Build artifacts not needed at runtime
+dist/**/*.map
+dist/**/*.d.ts
+dist/**/*.d.ts.map
+
+# Repo dev files
+.github/
+.claude/
+.vscode/
+.idea/
+coverage/
+.husky/
+
+# Backups / patches / scratch
+*.backup
+*.bak
+*.patch
+*.orig
+*.swp
+*.swo
+*.log
+
+# Configs not needed at runtime
+.eslintrc*
+.prettierrc*
+.editorconfig
+.gitignore
+.gitattributes
+.npmignore
+.dockerignore
+jest.config.*
+tsconfig.json
+tsconfig.*.json
+smithery.yaml
+.env
+.env.*
+
+# Other packaged outputs
+*.mcpb
+*.tgz

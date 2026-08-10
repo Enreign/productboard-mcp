@@ -81,6 +81,9 @@ pids/
 # Output of 'npm pack'
 *.tgz
 
+# Output of 'mcpb pack' — versioned MCP bundles
+*.mcpb
+
 # Yarn Integrity file
 .yarn-integrity
 
